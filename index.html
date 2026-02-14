@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garment Factory Production Planner</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+        }
+
+        .tab:hover {
+            background: #e0e0e0;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-section {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .production-line {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .line-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .line-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .line-capacity {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .line-status {
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .status-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .next-feed-date {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .login-container {
+            max-width: 450px;
+            margin: 50px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .firebase-setup {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .firebase-setup h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .firebase-setup code {
+            display: block;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+
+        .firebase-setup ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .firebase-setup li {
+            margin: 8px 0;
+        }
+
+        #appContent {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Container -->
+    <div id="loginContainer" class="login-container">
+        <div class="login-header">
+            <h2>🏭 Garment Factory Planner</h2>
+            <p>Cloud-Based Production Management</p>
+        </div>
+        
+        <div class="firebase-setup">
+            <h4>📋 Setup Instructions:</h4>
+            <ol>
+                <li>Go to <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a></li>
+                <li>Create a new project (or use existing)</li>
+                <li>Enable <strong>Realtime Database</strong></li>
+                <li>Enable <strong>Email/Password Authentication</strong></li>
+                <li>Get your config from Project Settings → General → Your apps</li>
+                <li>Paste your Firebase config in the code below (line ~550)</li>
+            </ol>
+            
+            <h4 style="margin-top: 20px;">🔑 Test Credentials (After Setup):</h4>
+            <p style="color: #856404; margin: 10px 0;">Create your admin account on first login</p>
+        </div>
+
+        <div class="form-group" style="margin-top: 30px;">
+            <label>Email</label>
+            <input type="email" id="loginEmail" placeholder="admin@factory.com">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter password">
+        </div>
+        <button class="btn" onclick="login()" style="width: 100%; margin-top: 10px;">Login</button>
+        <button class="btn" onclick="signup()" style="width: 100%; margin-top: 10px; background: #28a745;">Create Account</button>
+        <div id="authMessage" style="margin-top: 15px; text-align: center; color: #d32f2f;"></div>
+    </div>
+
+    <!-- Main App (Hidden until logged in) -->
+    <div id="appContent">
+    <div class="container">
+        <div class="header">
+            <h1>🏭 Garment Factory Production Planner</h1>
+            <p>Cloud-Based Production Line Management System</p>
+            <button class="btn" onclick="logout()" style="position: absolute; top: 20px; right: 20px; padding: 8px 20px;">Logout</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" onclick="switchTab('lines')">⚙️ Manage Lines</button>
+            <button class="tab" onclick="switchTab('styles')">📦 Add PO</button>
+            <button class="tab" onclick="switchTab('assign')">📋 Assign to Line</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <h2 style="margin-bottom: 25px; color: #333;">Production Lines Overview</h2>
+            <div id="dashboardContent"></div>
+        </div>
+
+        <!-- Manage Lines Tab -->
+        <div id="lines" class="tab-content">
+            <div class="form-section">
+                <h3>Add Production Line</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Line Name</label>
+                        <input type="text" id="lineName" placeholder="e.g., Line 1">
+                    </div>
+                    <div class="form-group">
+                        <label>Daily Capacity (pieces/day)</label>
+                        <input type="number" id="lineCapacity" placeholder="e.g., 500">
+                    </div>
+                </div>
+                <button class="btn" onclick="addLine()">Add Line</button>
+            </div>
+
+            <div class="form-section">
+                <h3>Existing Production Lines</h3>
+                <div id="linesList"></div>
+            </div>
+        </div>
+
+        <!-- Add Style Tab -->
+        <div id="styles" class="tab-content">
+            <div class="form-section">
+                <h3>Add New Purchase Order (PO)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>PO Number</label>
+                        <input type="text" id="styleNumber" placeholder="e.g., PO-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label>Style Description</label>
+                        <input type="text" id="styleName" placeholder="e.g., Men's T-Shirt Blue">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Total Quantity (pieces)</label>
+                        <input type="number" id="styleQuantity" placeholder="e.g., 5000">
+                    </div>
+                    <div class="form-group">
+                        <label>Delivery Deadline</label>
+                        <input type="date" id="styleDeadline">
+                    </div>
+                </div>
+                <button class="btn" onclick="addStyle()">Add Purchase Order</button>
+            </div>
+
+            <div class="form-section">
+                <h3>Available Purchase Orders</h3>
+                <div id="stylesList"></div>
+            </div>
+        </div>
+
+        <!-- Assign to Line Tab -->
+        <div id="assign" class="tab-content">
+            <div class="form-section">
+                <h3>Assign PO to Production Line</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Select Production Line</label>
+                        <select id="assignLine"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Select Purchase Order</label>
+                        <select id="assignStyle"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Start Date (auto-fills based on line availability)</label>
+                    <input type="date" id="assignStartDate">
+                </div>
+                <button class="btn" onclick="assignStyleToLine()">Assign PO to Line</button>
+            </div>
+        </div>
+    </div>
+    <!-- End App Content -->
+    </div>
+
+    <script>
+        // ============================================
+        // FIREBASE CONFIGURATION
+        // ============================================
+        // TODO: Replace with your Firebase config from Firebase Console
+        const firebaseConfig = {
+  apiKey: "AIzaSyCiR55uHGodjL_B3szfN1gu_LvBIf1Q6_U",
+  authDomain: "dag-domestic-production-plan.firebaseapp.com",
+  databaseURL: "https://dag-domestic-production-plan-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dag-domestic-production-plan",
+  storageBucket: "dag-domestic-production-plan.firebasestorage.app",
+  messagingSenderId: "569036237866",
+  appId: "1:569036237866:web:8a381d2d75c638fe44a753",
+  measurementId: "G-HVFJENYXGG"
+};
+
+
+        // Initialize Firebase
+        let app, auth, database;
+        let currentUser = null;
+
+        try {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            database = firebase.database();
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            document.getElementById('authMessage').innerHTML = 
+                '<strong style="color: #d32f2f;">⚠️ Please configure Firebase settings in the code (line ~550)</strong>';
+        }
+
+        // Data storage
+        let productionLines = [];
+        let styles = [];
+        let assignments = [];
+
+        // ============================================
+        // AUTHENTICATION FUNCTIONS
+        // ============================================
+        
+        // Login function
+        function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                showAuthMessage('Please enter email and password', 'error');
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    showAuthMessage('Login successful!', 'success');
+                    showApp();
+                })
+                .catch((error) => {
+                    showAuthMessage('Login failed: ' + error.message, 'error');
+                });
+        }
+
+        // Signup function
+        function signup() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                showAuthMessage('Please enter email and password', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showAuthMessage('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    showAuthMessage('Account created! Logging in...', 'success');
+                    showApp();
+                })
+                .catch((error) => {
+                    showAuthMessage('Signup failed: ' + error.message, 'error');
+                });
+        }
+
+        // Logout function
+        function logout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                hideApp();
+                showAuthMessage('Logged out successfully', 'success');
+            });
+        }
+
+        // Show auth message
+        function showAuthMessage(message, type) {
+            const msgDiv = document.getElementById('authMessage');
+            msgDiv.textContent = message;
+            msgDiv.style.color = type === 'success' ? '#28a745' : '#d32f2f';
+        }
+
+        // Show/hide app
+        function showApp() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('appContent').style.display = 'block';
+            loadData();
+        }
+
+        function hideApp() {
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('appContent').style.display = 'none';
+        }
+
+        // Check auth state on load
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                showApp();
+            } else {
+                hideApp();
+            }
+        });
+
+        // ============================================
+        // DATA MANAGEMENT WITH FIREBASE
+        // ============================================
+
+        // Load data from Firebase
+        function loadData() {
+            if (!currentUser) return;
+
+            const userDataRef = database.ref('users/' + currentUser.uid);
+            
+            userDataRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    productionLines = data.lines || [];
+                    styles = data.styles || [];
+                    assignments = data.assignments || [];
+                } else {
+                    // Initialize with sample data for new users
+                    initSampleData();
+                }
+                updateUI();
+            });
+
+            // Real-time listener for updates
+            userDataRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    productionLines = data.lines || [];
+                    styles = data.styles || [];
+                    assignments = data.assignments || [];
+                    updateUI();
+                }
+            });
+        }
+
+        // Save data to Firebase
+        function saveData() {
+            if (!currentUser) return;
+
+            database.ref('users/' + currentUser.uid).set({
+                lines: productionLines,
+                styles: styles,
+                assignments: assignments
+            }).then(() => {
+                console.log('Data saved to Firebase');
+            }).catch((error) => {
+                console.error('Error saving data:', error);
+                alert('Error saving data: ' + error.message);
+            });
+        }
+
+        // Initialize with sample data
+        function initSampleData() {
+            // Add 9 production lines
+            for (let i = 1; i <= 9; i++) {
+                productionLines.push({
+                    id: `line-${i}`,
+                    name: `Line ${i}`,
+                    capacity: 500 + (i * 50)
+                });
+            }
+            saveData();
+            updateUI();
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            updateUI();
+        }
+
+        // Add production line
+        function addLine() {
+            const name = document.getElementById('lineName').value;
+            const capacity = parseInt(document.getElementById('lineCapacity').value);
+
+            if (!name || !capacity) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            productionLines.push({
+                id: `line-${Date.now()}`,
+                name: name,
+                capacity: capacity
+            });
+
+            document.getElementById('lineName').value = '';
+            document.getElementById('lineCapacity').value = '';
+
+            saveData();
+            updateUI();
+            alert('Production line added successfully!');
+        }
+
+        // Add style
+        function addStyle() {
+            const number = document.getElementById('styleNumber').value;
+            const name = document.getElementById('styleName').value;
+            const quantity = parseInt(document.getElementById('styleQuantity').value);
+            const deadline = document.getElementById('styleDeadline').value;
+
+            if (!number || !name || !quantity || !deadline) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            styles.push({
+                id: `style-${Date.now()}`,
+                number: number,
+                name: name,
+                quantity: quantity,
+                deadline: deadline
+            });
+
+            document.getElementById('styleNumber').value = '';
+            document.getElementById('styleName').value = '';
+            document.getElementById('styleQuantity').value = '';
+            document.getElementById('styleDeadline').value = '';
+
+            saveData();
+            updateUI();
+            alert('Purchase Order added successfully!');
+        }
+
+        // Assign style to line
+        function assignStyleToLine() {
+            const lineId = document.getElementById('assignLine').value;
+            const styleId = document.getElementById('assignStyle').value;
+            const startDate = document.getElementById('assignStartDate').value;
+
+            if (!lineId || !styleId || !startDate) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            const line = productionLines.find(l => l.id === lineId);
+            const style = styles.find(s => s.id === styleId);
+
+            // Simple calculation: Production Days = Quantity ÷ Line Capacity
+            const daysNeeded = Math.ceil(style.quantity / line.capacity);
+
+            const start = new Date(startDate);
+            const end = new Date(start);
+            end.setDate(end.getDate() + daysNeeded);
+
+            // Calculate delivery date (same as end date)
+            const deliveryDate = new Date(end);
+
+            assignments.push({
+                id: `assign-${Date.now()}`,
+                lineId: lineId,
+                styleId: styleId,
+                startDate: startDate,
+                endDate: end.toISOString().split('T')[0],
+                deliveryDate: deliveryDate.toISOString().split('T')[0],
+                daysNeeded: daysNeeded
+            });
+
+            document.getElementById('assignStartDate').value = '';
+
+            saveData();
+            updateUI();
+            switchTab('dashboard');
+            alert(`PO assigned successfully!\nProduction Days: ${daysNeeded}\nDelivery Date: ${deliveryDate.toISOString().split('T')[0]}`);
+        }
+
+        // Calculate next feeding date for a line (2 days before current PO ends)
+        function getNextFeedingDate(lineId) {
+            const lineAssignments = assignments
+                .filter(a => a.lineId === lineId)
+                .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+
+            if (lineAssignments.length === 0) {
+                return new Date().toISOString().split('T')[0];
+            }
+
+            // Next PO should start 2 days BEFORE the current PO finishes
+            const lastEndDate = new Date(lineAssignments[0].endDate);
+            lastEndDate.setDate(lastEndDate.getDate() - 2); // 2 days before completion
+            
+            // If that date is in the past, use today
+            const today = new Date();
+            if (lastEndDate < today) {
+                return today.toISOString().split('T')[0];
+            }
+            
+            return lastEndDate.toISOString().split('T')[0];
+        }
+
+        // Update all UI elements
+        function updateUI() {
+            updateDashboard();
+            updateLinesList();
+            updateStylesList();
+            updateAssignDropdowns();
+        }
+
+        // Update dashboard
+        function updateDashboard() {
+            const container = document.getElementById('dashboardContent');
+            
+            if (productionLines.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Production Lines Yet</h3>
+                        <p>Go to "Manage Lines" tab to add your production lines</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+
+            productionLines.forEach(line => {
+                const lineAssignments = assignments.filter(a => a.lineId === line.id);
+                const currentAssignment = lineAssignments.find(a => {
+                    const now = new Date();
+                    const start = new Date(a.startDate);
+                    const end = new Date(a.endDate);
+                    return now >= start && now <= end;
+                });
+
+                const nextFeedDate = getNextFeedingDate(line.id);
+
+                html += `
+                    <div class="production-line">
+                        <div class="line-header">
+                            <div>
+                                <div class="line-name">${line.name}</div>
+                                <div class="line-capacity">Capacity: ${line.capacity} pieces/day</div>
+                            </div>
+                        </div>
+                        <div class="line-status">
+                `;
+
+                if (currentAssignment) {
+                    const style = styles.find(s => s.id === currentAssignment.styleId);
+                    html += `
+                        <div class="alert alert-info">Currently in Production</div>
+                        <div class="status-item">
+                            <span class="status-label">PO Number:</span>
+                            <span class="status-value">${style.number}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Description:</span>
+                            <span class="status-value">${style.name}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Quantity:</span>
+                            <span class="status-value">${style.quantity} pieces</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Production Days:</span>
+                            <span class="status-value">${currentAssignment.daysNeeded} days</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Start Date:</span>
+                            <span class="status-value">${currentAssignment.startDate}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Expected Completion:</span>
+                            <span class="status-value">${currentAssignment.endDate}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">📦 Delivery Date:</span>
+                            <span class="status-value" style="color: #2e7d32; font-weight: 700;">${currentAssignment.deliveryDate}</span>
+                        </div>
+                    `;
+                } else {
+                    html += `<div class="alert alert-success">Line Available</div>`;
+                }
+
+                html += `
+                        </div>
+                        <div class="next-feed-date">
+                            📅 Next PO Feed Date: ${nextFeedDate}
+                            <div style="font-size: 0.85em; margin-top: 5px; opacity: 0.8;">
+                                (Feed 2 days before current PO completes)
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Update lines list
+        function updateLinesList() {
+            const container = document.getElementById('linesList');
+            
+            if (productionLines.length === 0) {
+                container.innerHTML = '<p style="color: #999;">No production lines added yet</p>';
+                return;
+            }
+
+            let html = '';
+            productionLines.forEach(line => {
+                html += `
+                    <div class="status-item">
+                        <span class="status-label">${line.name}</span>
+                        <span class="status-value">${line.capacity} pieces/day</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Update styles list
+        function updateStylesList() {
+            const container = document.getElementById('stylesList');
+            
+            if (styles.length === 0) {
+                container.innerHTML = '<p style="color: #999;">No purchase orders added yet</p>';
+                return;
+            }
+
+            let html = '';
+            styles.forEach(style => {
+                html += `
+                    <div class="production-line" style="padding: 15px;">
+                        <div class="status-item">
+                            <span class="status-label">PO Number:</span>
+                            <span class="status-value">${style.number}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Description:</span>
+                            <span class="status-value">${style.name}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Quantity:</span>
+                            <span class="status-value">${style.quantity} pieces</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Deadline:</span>
+                            <span class="status-value">${style.deadline}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Update assignment dropdowns
+        function updateAssignDropdowns() {
+            const lineSelect = document.getElementById('assignLine');
+            const styleSelect = document.getElementById('assignStyle');
+
+            lineSelect.innerHTML = '<option value="">Select a line...</option>';
+            productionLines.forEach(line => {
+                lineSelect.innerHTML += `<option value="${line.id}">${line.name} (${line.capacity} pcs/day)</option>`;
+            });
+
+            styleSelect.innerHTML = '<option value="">Select a PO...</option>';
+            styles.forEach(style => {
+                styleSelect.innerHTML += `<option value="${style.id}">${style.number} - ${style.name}</option>`;
+            });
+
+            // Add event listener to auto-fill start date when line is selected
+            lineSelect.addEventListener('change', function() {
+                const selectedLineId = this.value;
+                if (selectedLineId) {
+                    const nextFeedDate = getNextFeedingDate(selectedLineId);
+                    document.getElementById('assignStartDate').value = nextFeedDate;
+                }
+            });
+        }
+
+        // Note: App initialization is handled by Firebase auth state listener
+    </script>
+</body>
+</html>
