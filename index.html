@@ -3,948 +3,1948 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Garment Factory Production Planner</title>
-    
+    <title>DAG Garment Factory Planner</title>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
+
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <!-- jsPDF + AutoTable for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg: #0f0f0f;
+            --surface: #1a1a1a;
+            --surface2: #222222;
+            --surface3: #2a2a2a;
+            --border: #333333;
+            --border2: #444444;
+            --accent: #f5a623;
+            --accent2: #e8901a;
+            --accent-dim: rgba(245,166,35,0.12);
+            --green: #2ecc71;
+            --green-dim: rgba(46,204,113,0.12);
+            --red: #e74c3c;
+            --red-dim: rgba(231,76,60,0.12);
+            --blue: #3498db;
+            --blue-dim: rgba(52,152,219,0.12);
+            --text: #f0f0f0;
+            --text2: #aaaaaa;
+            --text3: #666666;
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            padding: 20px;
         }
 
-        .container {
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+        /* ══════════════════════════════════════
+           LOGIN SCREEN
+        ══════════════════════════════════════ */
+        #loginContainer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg);
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+        }
+
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            padding: 50px 44px;
+            width: 420px;
+            position: relative;
+        }
+
+        .login-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--accent);
+        }
+
+        .login-logo {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .login-title {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .login-sub {
+            font-size: 13px;
+            color: var(--text2);
+            margin-bottom: 36px;
+        }
+
+        .field-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text3);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .field-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            color: var(--text);
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        .field-input:focus { border-color: var(--accent); }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            border: none;
+            color: #000;
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn-primary:hover { background: var(--accent2); }
+        .btn-primary:active { transform: scale(0.99); }
+
+        .btn-outline {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid var(--border2);
+            color: var(--text2);
+            font-family: var(--mono);
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+        #authMessage {
+            font-family: var(--mono);
+            font-size: 12px;
+            margin-top: 14px;
+            text-align: center;
+        }
+
+        /* ══════════════════════════════════════
+           APP SHELL
+        ══════════════════════════════════════ */
+        #appContent { display: none; min-height: 100vh; }
+
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .topbar-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .topbar-title {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar-user {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .btn-logout {
+            padding: 6px 16px;
+            background: transparent;
+            border: 1px solid var(--border2);
+            color: var(--text2);
+            font-family: var(--mono);
+            font-size: 11px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+        /* ── NAV TABS ── */
+        .nav-tabs {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            padding: 0 32px;
+            gap: 2px;
+        }
+
+        .nav-tab {
+            padding: 14px 22px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text3);
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+            margin-bottom: -1px;
+        }
+
+        .nav-tab:hover { color: var(--text2); }
+        .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* ── MAIN CONTENT ── */
+        .main-content {
+            padding: 32px;
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* ── PAGE HEADER ── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .page-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text3);
+            margin-bottom: 4px;
+        }
+
+        .page-heading {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* ── STAT CARDS ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 20px 22px;
+            position: relative;
             overflow: hidden;
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
         }
 
-        .header h1 {
-            font-size: 2.5em;
+        .stat-card.amber::after { background: var(--accent); }
+        .stat-card.green::after { background: var(--green); }
+        .stat-card.blue::after { background: var(--blue); }
+        .stat-card.red::after { background: var(--red); }
+
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text3);
             margin-bottom: 10px;
         }
 
-        .tabs {
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-card.amber .stat-value { color: var(--accent); }
+        .stat-card.green .stat-value { color: var(--green); }
+        .stat-card.blue .stat-value { color: var(--blue); }
+        .stat-card.red .stat-value { color: var(--red); }
+
+        .stat-sub {
+            font-size: 12px;
+            color: var(--text3);
+            margin-top: 4px;
+        }
+
+        /* ── LINE CARDS ── */
+        .lines-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 16px;
+        }
+
+        .line-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 22px;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .line-card:hover { border-color: var(--border2); }
+
+        .line-card-header {
             display: flex;
-            background: #f5f5f5;
-            border-bottom: 2px solid #ddd;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
         }
 
-        .tab {
-            flex: 1;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-            border: none;
-            background: transparent;
-            font-size: 16px;
+        .line-card-name {
+            font-family: var(--mono);
+            font-size: 15px;
+            font-weight: 700;
         }
 
-        .tab:hover {
-            background: #e0e0e0;
+        .line-card-cap {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 3px;
         }
 
-        .tab.active {
-            background: white;
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
+        .badge {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border: 1px solid;
         }
 
-        .tab-content {
-            display: none;
-            padding: 30px;
+        .badge-active { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+        .badge-idle { color: var(--text3); border-color: var(--border2); }
+        .badge-warning { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+
+        /* ── PROGRESS BAR ── */
+        .progress-wrap {
+            margin: 14px 0;
         }
 
-        .tab-content.active {
-            display: block;
-        }
-
-        .form-section {
-            background: #f9f9f9;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            border: 2px solid #e0e0e0;
-        }
-
-        .form-section h3 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.4em;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border 0.3s;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .production-line {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .line-header {
+        .progress-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 6px;
         }
 
-        .line-name {
-            font-size: 1.3em;
+        .progress-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text2);
+        }
+
+        .progress-pct {
+            font-family: var(--mono);
+            font-size: 11px;
             font-weight: 700;
-            color: #667eea;
+            color: var(--accent);
         }
 
-        .line-capacity {
-            color: #666;
-            font-size: 0.95em;
+        .progress-bar {
+            height: 4px;
+            background: var(--surface3);
+            overflow: hidden;
         }
 
-        .line-status {
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.6s ease;
         }
 
-        .status-item {
+        .progress-fill.green { background: var(--green); }
+        .progress-fill.red { background: var(--red); }
+
+        /* ── KV ROWS ── */
+        .kv-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .kv-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--surface2);
         }
 
-        .status-label {
+        .kv-key {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text3);
+        }
+
+        .kv-val {
+            font-family: var(--mono);
+            font-size: 12px;
             font-weight: 600;
-            color: #555;
+            color: var(--text);
         }
 
-        .status-value {
-            color: #667eea;
-            font-weight: 600;
+        .kv-val.accent { color: var(--accent); }
+        .kv-val.green { color: var(--green); }
+        .kv-val.red { color: var(--red); }
+
+        /* ── FEED DATE BOX ── */
+        .feed-box {
+            margin-top: 14px;
+            padding: 12px 16px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(245,166,35,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .next-feed-date {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            text-align: center;
+        .feed-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .feed-date {
+            font-family: var(--mono);
+            font-size: 13px;
             font-weight: 700;
-            font-size: 1.1em;
+            color: var(--accent);
         }
 
-        .alert {
-            padding: 15px;
-            border-radius: 8px;
+        /* ── CHART SECTION ── */
+        .chart-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+
+        .chart-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text3);
             margin-bottom: 20px;
-            font-weight: 600;
         }
 
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 2px solid #c3e6cb;
+        /* ── FORM SECTIONS ── */
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 28px;
+            margin-bottom: 24px;
         }
 
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 2px solid #bee5eb;
+        .form-card-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 22px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .grid-2 {
+        .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 18px;
         }
 
-        @media (max-width: 768px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
+        .form-field { display: flex; flex-direction: column; }
+
+        .form-field label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text3);
+            margin-bottom: 8px;
         }
 
+        .form-field input,
+        .form-field select {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            color: var(--text);
+            padding: 11px 14px;
+            font-family: var(--mono);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus { border-color: var(--accent); }
+
+        .form-field select option { background: var(--surface2); }
+
+        .form-actions { margin-top: 20px; display: flex; gap: 12px; }
+
+        .btn-submit {
+            padding: 12px 28px;
+            background: var(--accent);
+            border: none;
+            color: #000;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-submit:hover { background: var(--accent2); }
+
+        /* ── TABLE ── */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text3);
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+        }
+
+        .data-table td {
+            padding: 12px 14px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--mono);
+            color: var(--text2);
+        }
+
+        .data-table tr:hover td { background: var(--surface2); }
+
+        /* ── ACTION BUTTONS (small) ── */
+        .btn-sm {
+            padding: 5px 12px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border: 1px solid;
+            background: transparent;
+            text-transform: uppercase;
+            transition: all 0.15s;
+        }
+
+        .btn-edit { color: var(--blue); border-color: var(--blue); }
+        .btn-edit:hover { background: var(--blue-dim); }
+
+        .btn-delete { color: var(--red); border-color: var(--red); }
+        .btn-delete:hover { background: var(--red-dim); }
+
+        /* ── EXPORT BUTTONS ── */
+        .export-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn-export {
+            padding: 9px 20px;
+            background: transparent;
+            border: 1px solid var(--border2);
+            color: var(--text2);
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-top: 2px solid var(--accent);
+            padding: 36px;
+            width: 500px;
+            max-width: 95vw;
+        }
+
+        .modal-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 22px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        /* ── EMPTY STATE ── */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #999;
+            color: var(--text3);
+            font-family: var(--mono);
         }
 
-        .empty-state h3 {
-            font-size: 1.5em;
-            margin-bottom: 10px;
+        .empty-state-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.4; }
+        .empty-state-text { font-size: 12px; letter-spacing: 1px; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .form-grid { grid-template-columns: 1fr; }
+            .lines-grid { grid-template-columns: 1fr; }
+            .main-content { padding: 16px; }
+            .topbar { padding: 0 16px; }
+            .nav-tabs { padding: 0 16px; overflow-x: auto; }
         }
 
-        .login-container {
-            max-width: 450px;
-            margin: 50px auto;
-            background: white;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        @media (max-width: 500px) {
+            .stats-row { grid-template-columns: 1fr 1fr; }
         }
 
-        .login-header {
-            text-align: center;
-            margin-bottom: 30px;
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-left: 3px solid var(--accent);
+            padding: 14px 20px;
+            font-family: var(--mono);
+            font-size: 12px;
+            z-index: 2000;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
         }
 
-        .login-header h2 {
-            color: #667eea;
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-left-color: var(--green); }
+        .toast.error { border-left-color: var(--red); }
 
-        .firebase-setup {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .firebase-setup h4 {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-
-        .firebase-setup code {
-            display: block;
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-family: monospace;
-            font-size: 0.85em;
-            word-break: break-all;
-        }
-
-        .firebase-setup ol {
-            margin-left: 20px;
-            color: #856404;
-        }
-
-        .firebase-setup li {
-            margin: 8px 0;
-        }
-
-        #appContent {
-            display: none;
+        /* ── SECTION DIVIDER ── */
+        .section-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 28px 0;
         }
     </style>
 </head>
 <body>
-    <!-- Login Container -->
-    <div id="loginContainer" class="login-container">
-        <div class="login-header">
-            <h2>🏭 Garment Factory Planner</h2>
-            <p>Cloud-Based Production Management</p>
-        </div>
-        
-        <div class="firebase-setup">
-            <h4>📋 Setup Instructions:</h4>
-            <ol>
-                <li>Go to <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a></li>
-                <li>Create a new project (or use existing)</li>
-                <li>Enable <strong>Realtime Database</strong></li>
-                <li>Enable <strong>Email/Password Authentication</strong></li>
-                <li>Get your config from Project Settings → General → Your apps</li>
-                <li>Paste your Firebase config in the code below (line ~550)</li>
-            </ol>
-            
-            <h4 style="margin-top: 20px;">🔑 Test Credentials (After Setup):</h4>
-            <p style="color: #856404; margin: 10px 0;">Create your admin account on first login</p>
-        </div>
 
-        <div class="form-group" style="margin-top: 30px;">
-            <label>Email</label>
-            <input type="email" id="loginEmail" placeholder="admin@factory.com">
+<!-- ══════════════════════════════════════
+     LOGIN
+══════════════════════════════════════ -->
+<div id="loginContainer">
+    <div class="login-box">
+        <div class="login-logo">DAG Systems</div>
+        <div class="login-title">Factory Planner</div>
+        <div class="login-sub">Production Line Management</div>
+
+        <label class="field-label">Email</label>
+        <input type="email" class="field-input" id="loginEmail" placeholder="admin@factory.com">
+
+        <label class="field-label">Password</label>
+        <input type="password" class="field-input" id="loginPassword" placeholder="••••••••"
+            onkeydown="if(event.key==='Enter') login()">
+
+        <button class="btn-primary" onclick="login()" id="loginBtn">Sign In</button>
+        <button class="btn-outline" onclick="signup()">Create Account</button>
+
+        <div id="authMessage" style="margin-top:14px; font-family:var(--mono); font-size:12px; text-align:center; min-height:20px;"></div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APP
+══════════════════════════════════════ -->
+<div id="appContent">
+    <div class="topbar">
+        <div class="topbar-brand">
+            <div class="topbar-icon">🏭</div>
+            <div>
+                <div class="topbar-title">DAG FACTORY PLANNER</div>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="Enter password">
+        <div class="topbar-right">
+            <span class="topbar-user" id="topbarUser"></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
-        <button class="btn" onclick="login()" style="width: 100%; margin-top: 10px;">Login</button>
-        <button class="btn" onclick="signup()" style="width: 100%; margin-top: 10px; background: #28a745;">Create Account</button>
-        <div id="authMessage" style="margin-top: 15px; text-align: center; color: #d32f2f;"></div>
     </div>
 
-    <!-- Main App (Hidden until logged in) -->
-    <div id="appContent">
-    <div class="container">
-        <div class="header">
-            <h1>🏭 Garment Factory Production Planner</h1>
-            <p>Cloud-Based Production Line Management System</p>
-            <button class="btn" onclick="logout()" style="position: absolute; top: 20px; right: 20px; padding: 8px 20px;">Logout</button>
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="switchTab('dashboard', this)">Dashboard</button>
+        <button class="nav-tab" onclick="switchTab('lines', this)">Manage Lines</button>
+        <button class="nav-tab" onclick="switchTab('styles', this)">Purchase Orders</button>
+        <button class="nav-tab" onclick="switchTab('assign', this)">Assign PO</button>
+    </div>
+
+    <div class="main-content">
+
+        <!-- ─── DASHBOARD ─── -->
+        <div id="dashboard" class="tab-pane active">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Overview</div>
+                    <div class="page-heading">Production Dashboard</div>
+                </div>
+                <div class="export-row" style="margin-bottom:0">
+                    <button class="btn-export" onclick="exportPDF()">⬇ Export PDF</button>
+                    <button class="btn-export" onclick="exportExcel()">⬇ Export Excel</button>
+                </div>
+            </div>
+
+            <div class="stats-row" id="statsRow"></div>
+
+            <div class="chart-section">
+                <div class="chart-title">Production Progress by Line</div>
+                <canvas id="progressChart" height="90"></canvas>
+            </div>
+
+            <div class="page-title" style="margin-bottom:16px; letter-spacing:2px; font-family:var(--mono); font-size:9px; text-transform:uppercase; color:var(--text3);">Active Lines</div>
+            <div class="lines-grid" id="dashboardLines"></div>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-            <button class="tab" onclick="switchTab('lines')">⚙️ Manage Lines</button>
-            <button class="tab" onclick="switchTab('styles')">📦 Add PO</button>
-            <button class="tab" onclick="switchTab('assign')">📋 Assign to Line</button>
-        </div>
+        <!-- ─── MANAGE LINES ─── -->
+        <div id="lines" class="tab-pane">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Configuration</div>
+                    <div class="page-heading">Production Lines</div>
+                </div>
+            </div>
 
-        <!-- Dashboard Tab -->
-        <div id="dashboard" class="tab-content active">
-            <h2 style="margin-bottom: 25px; color: #333;">Production Lines Overview</h2>
-            <div id="dashboardContent"></div>
-        </div>
-
-        <!-- Manage Lines Tab -->
-        <div id="lines" class="tab-content">
-            <div class="form-section">
-                <h3>Add Production Line</h3>
-                <div class="grid-2">
-                    <div class="form-group">
+            <div class="form-card">
+                <div class="form-card-title">Add New Line</div>
+                <div class="form-grid">
+                    <div class="form-field">
                         <label>Line Name</label>
-                        <input type="text" id="lineName" placeholder="e.g., Line 1">
+                        <input type="text" id="lineName" placeholder="e.g. Line 10">
                     </div>
-                    <div class="form-group">
-                        <label>Daily Capacity (pieces/day)</label>
-                        <input type="number" id="lineCapacity" placeholder="e.g., 500">
+                    <div class="form-field">
+                        <label>Daily Capacity (pcs/day)</label>
+                        <input type="number" id="lineCapacity" placeholder="e.g. 500">
                     </div>
                 </div>
-                <button class="btn" onclick="addLine()">Add Line</button>
+                <div class="form-actions">
+                    <button class="btn-submit" onclick="addLine()">Add Line</button>
+                </div>
             </div>
 
-            <div class="form-section">
-                <h3>Existing Production Lines</h3>
-                <div id="linesList"></div>
+            <div class="form-card">
+                <div class="form-card-title">Existing Lines</div>
+                <div id="linesList">
+                    <div class="empty-state"><div class="empty-state-icon">⚙️</div><div class="empty-state-text">No lines added yet</div></div>
+                </div>
             </div>
         </div>
 
-        <!-- Add Style Tab -->
-        <div id="styles" class="tab-content">
-            <div class="form-section">
-                <h3>Add New Purchase Order (PO)</h3>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>PO Number</label>
-                        <input type="text" id="styleNumber" placeholder="e.g., PO-2024-001">
-                    </div>
-                    <div class="form-group">
-                        <label>Style Description</label>
-                        <input type="text" id="styleName" placeholder="e.g., Men's T-Shirt Blue">
-                    </div>
+        <!-- ─── PURCHASE ORDERS ─── -->
+        <div id="styles" class="tab-pane">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Inventory</div>
+                    <div class="page-heading">Purchase Orders</div>
                 </div>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Total Quantity (pieces)</label>
-                        <input type="number" id="styleQuantity" placeholder="e.g., 5000">
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-title">Add New Purchase Order</div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>PO Number</label>
+                        <input type="text" id="styleNumber" placeholder="e.g. PO-2024-001">
                     </div>
-                    <div class="form-group">
+                    <div class="form-field">
+                        <label>Style Description</label>
+                        <input type="text" id="styleName" placeholder="e.g. Men's T-Shirt Blue">
+                    </div>
+                    <div class="form-field">
+                        <label>Total Quantity (pcs)</label>
+                        <input type="number" id="styleQuantity" placeholder="e.g. 5000">
+                    </div>
+                    <div class="form-field">
                         <label>Delivery Deadline</label>
                         <input type="date" id="styleDeadline">
                     </div>
                 </div>
-                <button class="btn" onclick="addStyle()">Add Purchase Order</button>
+                <div class="form-actions">
+                    <button class="btn-submit" onclick="addStyle()">Add PO</button>
+                </div>
             </div>
 
-            <div class="form-section">
-                <h3>Available Purchase Orders</h3>
-                <div id="stylesList"></div>
+            <div class="form-card">
+                <div class="form-card-title">All Purchase Orders</div>
+                <div id="stylesList">
+                    <div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No POs added yet</div></div>
+                </div>
             </div>
         </div>
 
-        <!-- Assign to Line Tab -->
-        <div id="assign" class="tab-content">
-            <div class="form-section">
-                <h3>Assign PO to Production Line</h3>
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Select Production Line</label>
-                        <select id="assignLine"></select>
+        <!-- ─── ASSIGN ─── -->
+        <div id="assign" class="tab-pane">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Scheduling</div>
+                    <div class="page-heading">Assign PO to Line</div>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-title">New Assignment</div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Production Line</label>
+                        <select id="assignLine">
+                            <option value="">Select a line...</option>
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label>Select Purchase Order</label>
-                        <select id="assignStyle"></select>
+                    <div class="form-field">
+                        <label>Purchase Order</label>
+                        <select id="assignStyle">
+                            <option value="">Select a PO...</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Start Date (auto-fills from line availability)</label>
+                        <input type="date" id="assignStartDate">
+                    </div>
+                    <div class="form-field" id="calcPreview" style="display:none; justify-content:flex-end; align-items:flex-start; padding-top:20px;">
+                        <div style="background:var(--surface2); border:1px solid var(--border); padding:14px 16px; width:100%;">
+                            <div class="kv-key" style="margin-bottom:6px;">Estimated Days</div>
+                            <div class="stat-value" id="previewDays" style="font-size:22px; color:var(--accent);">—</div>
+                            <div class="stat-sub">working days (Mon–Sat)</div>
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Start Date (auto-fills based on line availability)</label>
-                    <input type="date" id="assignStartDate">
+                <div class="form-actions">
+                    <button class="btn-submit" onclick="assignStyleToLine()">Assign PO</button>
                 </div>
-                <button class="btn" onclick="assignStyleToLine()">Assign PO to Line</button>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-title">Assignment History</div>
+                <div id="assignmentsList">
+                    <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No assignments yet</div></div>
+                </div>
             </div>
         </div>
-    </div>
-    <!-- End App Content -->
-    </div>
 
-    <script>
-        // ============================================
-        // FIREBASE CONFIGURATION
-        // ============================================
-        // TODO: Replace with your Firebase config from Firebase Console
-  const firebaseConfig = {
-  apiKey: "AIzaSyCPigkTIkKzmUtg9G0LoqcLOs15mEAopjI",
-  authDomain: "dag-planner-new.firebaseapp.com",
-  databaseURL: "https://dag-planner-new-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "dag-planner-new",
-  storageBucket: "dag-planner-new.firebasestorage.app",
-  messagingSenderId: "592572288168",
-  appId: "1:592572288168:web:9583b690abf749ec68c69d",
-  measurementId: "G-X8VGNXSNCX"
+    </div><!-- /main-content -->
+</div><!-- /appContent -->
+
+<!-- ══════════════════════════════════════
+     EDIT MODAL
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+        <div class="modal-title" id="editModalTitle">Edit</div>
+        <div id="editModalBody"></div>
+        <div class="modal-actions">
+            <button class="btn-sm btn-delete" style="padding:8px 18px" onclick="closeModal()">Cancel</button>
+            <button class="btn-submit" id="editModalSave" onclick="saveEdit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TOAST
+══════════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════ -->
+<script>
+// ============================================
+// FIREBASE CONFIG
+// ============================================
+const firebaseConfig = {
+    apiKey: "AIzaSyCPigkTIkKzmUtg9G0LoqcLOs15mEAopjI",
+    authDomain: "dag-planner-new.firebaseapp.com",
+    databaseURL: "https://dag-planner-new-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "dag-planner-new",
+    storageBucket: "dag-planner-new.firebasestorage.app",
+    messagingSenderId: "592572288168",
+    appId: "1:592572288168:web:9583b690abf749ec68c69d",
+    measurementId: "G-X8VGNXSNCX"
 };
 
+let app, auth, database;
+let currentUser = null;
+let productionLines = [], styles = [], assignments = [];
+let progressChart = null;
+let editingType = null, editingId = null;
 
-        // Initialize Firebase
-        let app, auth, database;
-        let currentUser = null;
+try {
+    app = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    database = firebase.database();
+} catch(e) {
+    console.error(e);
+}
 
-        try {
-            app = firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            database = firebase.database();
-            console.log('Firebase initialized successfully');
-        } catch (error) {
-            console.error('Firebase initialization error:', error);
-            document.getElementById('authMessage').innerHTML = 
-                '<strong style="color: #d32f2f;">⚠️ Please configure Firebase settings in the code (line ~550)</strong>';
-        }
+// ============================================
+// WORKING DAYS CALCULATION (Mon–Sat, skip Sun)
+// ============================================
+function addWorkingDays(startDate, days) {
+    const d = new Date(startDate);
+    let added = 0;
+    while (added < days) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0) added++; // skip Sunday
+    }
+    return d;
+}
 
-        // Data storage
-        let productionLines = [];
-        let styles = [];
-        let assignments = [];
+function countWorkingDays(startDate, endDate) {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    let count = 0;
+    const cur = new Date(s);
+    while (cur <= e) {
+        if (cur.getDay() !== 0) count++;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
 
-        // ============================================
-        // AUTHENTICATION FUNCTIONS
-        // ============================================
-        
-        // Login function
-        function login() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            if (!email || !password) {
-                showAuthMessage('Please enter email and password', 'error');
-                return;
-            }
+function workingDaysNeeded(quantity, capacity) {
+    return Math.ceil(quantity / capacity);
+}
 
-            auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    showAuthMessage('Login successful!', 'success');
-                    showApp();
-                })
-                .catch((error) => {
-                    showAuthMessage('Login failed: ' + error.message, 'error');
-                });
-        }
+function nextWorkingDay(date) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0) d.setDate(d.getDate() + 1);
+    return d;
+}
 
-        // Signup function
-        function signup() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            if (!email || !password) {
-                showAuthMessage('Please enter email and password', 'error');
-                return;
-            }
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
 
-            if (password.length < 6) {
-                showAuthMessage('Password must be at least 6 characters', 'error');
-                return;
-            }
+function toISODate(d) {
+    return d.toISOString().split('T')[0];
+}
 
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    showAuthMessage('Account created! Logging in...', 'success');
-                    showApp();
-                })
-                .catch((error) => {
-                    showAuthMessage('Signup failed: ' + error.message, 'error');
-                });
-        }
+// ============================================
+// AUTH
+// ============================================
+function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) { showAuthMsg('Please enter email and password', 'error'); return; }
 
-        // Logout function
-        function logout() {
-            auth.signOut().then(() => {
-                currentUser = null;
-                hideApp();
-                showAuthMessage('Logged out successfully', 'success');
-            });
-        }
+    const btn = document.getElementById('loginBtn');
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
 
-        // Show auth message
-        function showAuthMessage(message, type) {
-            const msgDiv = document.getElementById('authMessage');
-            msgDiv.textContent = message;
-            msgDiv.style.color = type === 'success' ? '#28a745' : '#d32f2f';
-        }
+    if (!auth) { showAuthMsg('Firebase not initialized. Check console.', 'error'); btn.textContent = 'Sign In'; btn.disabled = false; return; }
 
-        // Show/hide app
-        function showApp() {
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('appContent').style.display = 'block';
-            loadData();
-        }
-
-        function hideApp() {
-            document.getElementById('loginContainer').style.display = 'block';
-            document.getElementById('appContent').style.display = 'none';
-        }
-
-        // Check auth state on load
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                showApp();
-            } else {
-                hideApp();
-            }
+    auth.signInWithEmailAndPassword(email, password)
+        .then(uc => {
+            currentUser = uc.user;
+            showAuthMsg('Login successful!', 'success');
+            showApp();
+        })
+        .catch(e => {
+            showAuthMsg('❌ ' + e.message, 'error');
+            btn.textContent = 'Sign In';
+            btn.disabled = false;
         });
+}
 
-        // ============================================
-        // DATA MANAGEMENT WITH FIREBASE
-        // ============================================
+function signup() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) { showAuthMsg('Please enter email and password', 'error'); return; }
+    if (password.length < 6) { showAuthMsg('Password must be at least 6 characters', 'error'); return; }
 
-        // Load data from Firebase
-        function loadData() {
-            if (!currentUser) return;
+    if (!auth) { showAuthMsg('Firebase not initialized. Check console.', 'error'); return; }
 
-            const userDataRef = database.ref('users/' + currentUser.uid);
-            
-            userDataRef.once('value').then((snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    productionLines = data.lines || [];
-                    styles = data.styles || [];
-                    assignments = data.assignments || [];
-                } else {
-                    // Initialize with sample data for new users
-                    initSampleData();
-                }
-                updateUI();
-            });
+    auth.createUserWithEmailAndPassword(email, password)
+        .then(uc => {
+            currentUser = uc.user;
+            showAuthMsg('Account created!', 'success');
+            showApp();
+        })
+        .catch(e => showAuthMsg('❌ ' + e.message, 'error'));
+}
 
-            // Real-time listener for updates
-            userDataRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    productionLines = data.lines || [];
-                    styles = data.styles || [];
-                    assignments = data.assignments || [];
-                    updateUI();
-                }
-            });
+function logout() {
+    auth.signOut().then(() => { currentUser = null; hideApp(); });
+}
+
+function showAuthMsg(msg, type) {
+    const el = document.getElementById('authMessage');
+    el.textContent = msg;
+    el.style.color = type === 'success' ? 'var(--green)' : 'var(--red)';
+    el.style.marginTop = '12px';
+}
+
+function showApp() {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+    if (currentUser) document.getElementById('topbarUser').textContent = currentUser.email;
+    loadData();
+}
+
+function hideApp() {
+    document.getElementById('loginContainer').style.display = 'flex';
+    document.getElementById('appContent').style.display = 'none';
+}
+
+auth.onAuthStateChanged(user => {
+    if (user) { currentUser = user; showApp(); }
+    else hideApp();
+});
+
+// ============================================
+// DATA
+// ============================================
+function loadData() {
+    if (!currentUser) return;
+    const ref = database.ref('users/' + currentUser.uid);
+
+    ref.once('value').then(snap => {
+        const data = snap.val();
+        if (data) {
+            productionLines = data.lines || [];
+            styles = data.styles || [];
+            assignments = data.assignments || [];
+        } else {
+            initSampleData();
         }
+        updateUI();
+    });
 
-        // Save data to Firebase
-        function saveData() {
-            if (!currentUser) return;
-
-            database.ref('users/' + currentUser.uid).set({
-                lines: productionLines,
-                styles: styles,
-                assignments: assignments
-            }).then(() => {
-                console.log('Data saved to Firebase');
-            }).catch((error) => {
-                console.error('Error saving data:', error);
-                alert('Error saving data: ' + error.message);
-            });
-        }
-
-        // Initialize with sample data
-        function initSampleData() {
-            // Add 9 production lines
-            for (let i = 1; i <= 9; i++) {
-                productionLines.push({
-                    id: `line-${i}`,
-                    name: `Line ${i}`,
-                    capacity: 500 + (i * 50)
-                });
-            }
-            saveData();
+    ref.on('value', snap => {
+        const data = snap.val();
+        if (data) {
+            productionLines = data.lines || [];
+            styles = data.styles || [];
+            assignments = data.assignments || [];
             updateUI();
         }
+    });
+}
 
-        // Switch tabs
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-            
-            updateUI();
-        }
+function saveData() {
+    if (!currentUser) return;
+    database.ref('users/' + currentUser.uid).set({
+        lines: productionLines,
+        styles: styles,
+        assignments: assignments
+    }).catch(e => showToast('Save error: ' + e.message, 'error'));
+}
 
-        // Add production line
-        function addLine() {
-            const name = document.getElementById('lineName').value;
-            const capacity = parseInt(document.getElementById('lineCapacity').value);
+function initSampleData() {
+    for (let i = 1; i <= 9; i++) {
+        productionLines.push({ id: `line-${i}`, name: `Line ${i}`, capacity: 500 + i * 50 });
+    }
+    saveData();
+}
 
-            if (!name || !capacity) {
-                alert('Please fill in all fields');
-                return;
-            }
+// ============================================
+// TAB NAVIGATION
+// ============================================
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    updateUI();
+}
 
-            productionLines.push({
-                id: `line-${Date.now()}`,
-                name: name,
-                capacity: capacity
-            });
+// ============================================
+// ADD LINE
+// ============================================
+function addLine() {
+    const name = document.getElementById('lineName').value.trim();
+    const cap = parseInt(document.getElementById('lineCapacity').value);
+    if (!name || !cap) { showToast('Fill in all fields', 'error'); return; }
 
-            document.getElementById('lineName').value = '';
-            document.getElementById('lineCapacity').value = '';
+    productionLines.push({ id: `line-${Date.now()}`, name, capacity: cap });
+    document.getElementById('lineName').value = '';
+    document.getElementById('lineCapacity').value = '';
+    saveData();
+    showToast('Line added successfully', 'success');
+    updateUI();
+}
 
-            saveData();
-            updateUI();
-            alert('Production line added successfully!');
-        }
+// ============================================
+// ADD STYLE / PO
+// ============================================
+function addStyle() {
+    const number = document.getElementById('styleNumber').value.trim();
+    const name = document.getElementById('styleName').value.trim();
+    const qty = parseInt(document.getElementById('styleQuantity').value);
+    const deadline = document.getElementById('styleDeadline').value;
+    if (!number || !name || !qty || !deadline) { showToast('Fill in all fields', 'error'); return; }
 
-        // Add style
-        function addStyle() {
-            const number = document.getElementById('styleNumber').value;
-            const name = document.getElementById('styleName').value;
-            const quantity = parseInt(document.getElementById('styleQuantity').value);
-            const deadline = document.getElementById('styleDeadline').value;
+    styles.push({ id: `style-${Date.now()}`, number, name, quantity: qty, deadline });
+    document.getElementById('styleNumber').value = '';
+    document.getElementById('styleName').value = '';
+    document.getElementById('styleQuantity').value = '';
+    document.getElementById('styleDeadline').value = '';
+    saveData();
+    showToast('PO added successfully', 'success');
+    updateUI();
+}
 
-            if (!number || !name || !quantity || !deadline) {
-                alert('Please fill in all fields');
-                return;
-            }
+// ============================================
+// ASSIGN PO → LINE
+// ============================================
+function assignStyleToLine() {
+    const lineId = document.getElementById('assignLine').value;
+    const styleId = document.getElementById('assignStyle').value;
+    const startDate = document.getElementById('assignStartDate').value;
+    if (!lineId || !styleId || !startDate) { showToast('Fill in all fields', 'error'); return; }
 
-            styles.push({
-                id: `style-${Date.now()}`,
-                number: number,
-                name: name,
-                quantity: quantity,
-                deadline: deadline
-            });
+    const line = productionLines.find(l => l.id === lineId);
+    const style = styles.find(s => s.id === styleId);
+    const days = workingDaysNeeded(style.quantity, line.capacity);
+    const endDateObj = addWorkingDays(startDate, days);
+    const endDate = toISODate(endDateObj);
 
-            document.getElementById('styleNumber').value = '';
-            document.getElementById('styleName').value = '';
-            document.getElementById('styleQuantity').value = '';
-            document.getElementById('styleDeadline').value = '';
+    assignments.push({
+        id: `assign-${Date.now()}`,
+        lineId, styleId, startDate, endDate,
+        daysNeeded: days
+    });
 
-            saveData();
-            updateUI();
-            alert('Purchase Order added successfully!');
-        }
+    document.getElementById('assignStartDate').value = '';
+    document.getElementById('calcPreview').style.display = 'none';
+    saveData();
+    showToast(`Assigned! ${days} working days → completes ${formatDate(endDate)}`, 'success');
+    switchTab('dashboard', document.querySelector('.nav-tab'));
+    updateUI();
+}
 
-        // Assign style to line
-        function assignStyleToLine() {
-            const lineId = document.getElementById('assignLine').value;
-            const styleId = document.getElementById('assignStyle').value;
-            const startDate = document.getElementById('assignStartDate').value;
+// ============================================
+// NEXT FEEDING DATE (2 working days before end)
+// ============================================
+function getNextFeedingDate(lineId) {
+    const lineAssignments = assignments
+        .filter(a => a.lineId === lineId)
+        .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
 
-            if (!lineId || !styleId || !startDate) {
-                alert('Please fill in all fields');
-                return;
-            }
+    if (lineAssignments.length === 0) return toISODate(new Date());
 
-            const line = productionLines.find(l => l.id === lineId);
-            const style = styles.find(s => s.id === styleId);
+    // Go back 2 working days from the last end date
+    const lastEnd = new Date(lineAssignments[0].endDate);
+    let countdown = 2;
+    const d = new Date(lastEnd);
+    while (countdown > 0) {
+        d.setDate(d.getDate() - 1);
+        if (d.getDay() !== 0) countdown--;
+    }
 
-            // Simple calculation: Production Days = Quantity ÷ Line Capacity
-            const daysNeeded = Math.ceil(style.quantity / line.capacity);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    return d < today ? toISODate(today) : toISODate(d);
+}
 
-            const start = new Date(startDate);
-            const end = new Date(start);
-            end.setDate(end.getDate() + daysNeeded);
+// ============================================
+// PRODUCTION PROGRESS
+// ============================================
+function getProductionProgress(assignment) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const start = new Date(assignment.startDate);
+    const end = new Date(assignment.endDate);
 
-            // Calculate delivery date (same as end date)
-            const deliveryDate = new Date(end);
+    if (today < start) return 0;
+    if (today >= end) return 100;
 
-            assignments.push({
-                id: `assign-${Date.now()}`,
-                lineId: lineId,
-                styleId: styleId,
-                startDate: startDate,
-                endDate: end.toISOString().split('T')[0],
-                deliveryDate: deliveryDate.toISOString().split('T')[0],
-                daysNeeded: daysNeeded
-            });
+    const totalDays = countWorkingDays(assignment.startDate, assignment.endDate);
+    const doneDays = countWorkingDays(assignment.startDate, toISODate(today));
+    return Math.min(100, Math.round((doneDays / totalDays) * 100));
+}
 
-            document.getElementById('assignStartDate').value = '';
+// ============================================
+// CURRENT / UPCOMING / OVERDUE ASSIGNMENT
+// ============================================
+function getLineCurrentAssignment(lineId) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    return assignments.find(a => {
+        if (a.lineId !== lineId) return false;
+        const s = new Date(a.startDate); s.setHours(0,0,0,0);
+        const e = new Date(a.endDate); e.setHours(0,0,0,0);
+        return today >= s && today <= e;
+    }) || null;
+}
 
-            saveData();
-            updateUI();
-            switchTab('dashboard');
-            alert(`PO assigned successfully!\nProduction Days: ${daysNeeded}\nDelivery Date: ${deliveryDate.toISOString().split('T')[0]}`);
-        }
+function getLineLastAssignment(lineId) {
+    const la = assignments.filter(a => a.lineId === lineId).sort((a,b)=>new Date(b.endDate)-new Date(a.endDate));
+    return la[0] || null;
+}
 
-        // Calculate next feeding date for a line (2 days before current PO ends)
-        function getNextFeedingDate(lineId) {
-            const lineAssignments = assignments
-                .filter(a => a.lineId === lineId)
-                .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+// ============================================
+// UPDATE ALL UI
+// ============================================
+function updateUI() {
+    updateStats();
+    updateDashboardLines();
+    updateChart();
+    updateLinesList();
+    updateStylesList();
+    updateAssignDropdowns();
+    updateAssignmentsList();
+}
 
-            if (lineAssignments.length === 0) {
-                return new Date().toISOString().split('T')[0];
-            }
+// ── STATS ──
+function updateStats() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const activeLines = productionLines.filter(l => getLineCurrentAssignment(l.id));
+    const overdue = assignments.filter(a => {
+        const e = new Date(a.endDate); e.setHours(0,0,0,0);
+        return e < today;
+    });
 
-            // Next PO should start 2 days BEFORE the current PO finishes
-            const lastEndDate = new Date(lineAssignments[0].endDate);
-            lastEndDate.setDate(lastEndDate.getDate() - 2); // 2 days before completion
-            
-            // If that date is in the past, use today
-            const today = new Date();
-            if (lastEndDate < today) {
-                return today.toISOString().split('T')[0];
-            }
-            
-            return lastEndDate.toISOString().split('T')[0];
-        }
+    document.getElementById('statsRow').innerHTML = `
+        <div class="stat-card amber">
+            <div class="stat-label">Total Lines</div>
+            <div class="stat-value">${productionLines.length}</div>
+            <div class="stat-sub">configured</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">Active Lines</div>
+            <div class="stat-value">${activeLines.length}</div>
+            <div class="stat-sub">in production today</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-label">Total POs</div>
+            <div class="stat-value">${styles.length}</div>
+            <div class="stat-sub">purchase orders</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-label">Overdue</div>
+            <div class="stat-value">${overdue.length}</div>
+            <div class="stat-sub">past end date</div>
+        </div>
+    `;
+}
 
-        // Update all UI elements
-        function updateUI() {
-            updateDashboard();
-            updateLinesList();
-            updateStylesList();
-            updateAssignDropdowns();
-        }
+// ── DASHBOARD LINE CARDS ──
+function updateDashboardLines() {
+    const container = document.getElementById('dashboardLines');
+    if (!productionLines.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏭</div><div class="empty-state-text">No lines configured yet</div></div>`;
+        return;
+    }
 
-        // Update dashboard
-        function updateDashboard() {
-            const container = document.getElementById('dashboardContent');
-            
-            if (productionLines.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No Production Lines Yet</h3>
-                        <p>Go to "Manage Lines" tab to add your production lines</p>
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    container.innerHTML = productionLines.map(line => {
+        const cur = getLineCurrentAssignment(line.id);
+        const feedDate = getNextFeedingDate(line.id);
+        let cardHTML = '';
+
+        if (cur) {
+            const style = styles.find(s => s.id === cur.styleId);
+            const pct = getProductionProgress(cur);
+            const endD = new Date(cur.endDate); endD.setHours(0,0,0,0);
+            const isLate = endD < today;
+            const fillClass = isLate ? 'red' : (pct >= 75 ? 'green' : '');
+
+            cardHTML = `
+                <div class="line-card-header">
+                    <div>
+                        <div class="line-card-name">${line.name}</div>
+                        <div class="line-card-cap">${line.capacity.toLocaleString()} pcs/day</div>
                     </div>
-                `;
-                return;
+                    <span class="badge ${isLate ? 'badge-warning' : 'badge-active'}">${isLate ? 'Overdue' : 'Active'}</span>
+                </div>
+                <div class="progress-wrap">
+                    <div class="progress-head">
+                        <span class="progress-label">${style ? style.number : '—'} · ${style ? style.name : ''}</span>
+                        <span class="progress-pct">${pct}%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+                </div>
+                <div class="kv-list">
+                    <div class="kv-row">
+                        <span class="kv-key">Quantity</span>
+                        <span class="kv-val">${style ? style.quantity.toLocaleString() : '—'} pcs</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Working Days</span>
+                        <span class="kv-val">${cur.daysNeeded} days</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Start</span>
+                        <span class="kv-val">${formatDate(cur.startDate)}</span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-key">Completion</span>
+                        <span class="kv-val ${isLate ? 'red' : 'accent'}">${formatDate(cur.endDate)}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            cardHTML = `
+                <div class="line-card-header">
+                    <div>
+                        <div class="line-card-name">${line.name}</div>
+                        <div class="line-card-cap">${line.capacity.toLocaleString()} pcs/day</div>
+                    </div>
+                    <span class="badge badge-idle">Idle</span>
+                </div>
+                <div style="padding: 24px 0; text-align:center; color: var(--text3); font-family: var(--mono); font-size:12px;">
+                    No active assignment
+                </div>
+            `;
+        }
+
+        cardHTML += `
+            <div class="feed-box">
+                <span class="feed-label">📅 Next Feed Date</span>
+                <span class="feed-date">${formatDate(feedDate)}</span>
+            </div>
+        `;
+
+        return `<div class="line-card">${cardHTML}</div>`;
+    }).join('');
+}
+
+// ── CHART ──
+function updateChart() {
+    const canvas = document.getElementById('progressChart');
+    if (!canvas) return;
+
+    const labels = productionLines.map(l => l.name);
+    const data = productionLines.map(l => {
+        const cur = getLineCurrentAssignment(l.id);
+        return cur ? getProductionProgress(cur) : 0;
+    });
+
+    const colors = data.map(v => v >= 75 ? '#2ecc71' : v > 0 ? '#f5a623' : '#333333');
+
+    if (progressChart) progressChart.destroy();
+
+    progressChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Progress %',
+                data,
+                backgroundColor: colors,
+                borderRadius: 2,
+                barThickness: 28,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a1a1a',
+                    borderColor: '#444',
+                    borderWidth: 1,
+                    titleColor: '#aaa',
+                    bodyColor: '#f0f0f0',
+                    callbacks: {
+                        label: ctx => ` ${ctx.parsed.y}% complete`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#222', drawBorder: false },
+                    ticks: { color: '#888', font: { family: 'IBM Plex Mono', size: 11 } }
+                },
+                y: {
+                    min: 0, max: 100,
+                    grid: { color: '#222', drawBorder: false },
+                    ticks: {
+                        color: '#888',
+                        font: { family: 'IBM Plex Mono', size: 11 },
+                        callback: v => v + '%'
+                    }
+                }
             }
+        }
+    });
+}
 
-            let html = '';
+// ── LINES LIST (Manage Lines tab) ──
+function updateLinesList() {
+    const container = document.getElementById('linesList');
+    if (!productionLines.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚙️</div><div class="empty-state-text">No lines added yet</div></div>`;
+        return;
+    }
 
-            productionLines.forEach(line => {
-                const lineAssignments = assignments.filter(a => a.lineId === line.id);
-                const currentAssignment = lineAssignments.find(a => {
-                    const now = new Date();
-                    const start = new Date(a.startDate);
-                    const end = new Date(a.endDate);
-                    return now >= start && now <= end;
-                });
-
-                const nextFeedDate = getNextFeedingDate(line.id);
-
-                html += `
-                    <div class="production-line">
-                        <div class="line-header">
-                            <div>
-                                <div class="line-name">${line.name}</div>
-                                <div class="line-capacity">Capacity: ${line.capacity} pieces/day</div>
-                            </div>
-                        </div>
-                        <div class="line-status">
-                `;
-
-                if (currentAssignment) {
-                    const style = styles.find(s => s.id === currentAssignment.styleId);
-                    html += `
-                        <div class="alert alert-info">Currently in Production</div>
-                        <div class="status-item">
-                            <span class="status-label">PO Number:</span>
-                            <span class="status-value">${style.number}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Description:</span>
-                            <span class="status-value">${style.name}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Quantity:</span>
-                            <span class="status-value">${style.quantity} pieces</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Production Days:</span>
-                            <span class="status-value">${currentAssignment.daysNeeded} days</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Start Date:</span>
-                            <span class="status-value">${currentAssignment.startDate}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Expected Completion:</span>
-                            <span class="status-value">${currentAssignment.endDate}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">📦 Delivery Date:</span>
-                            <span class="status-value" style="color: #2e7d32; font-weight: 700;">${currentAssignment.deliveryDate}</span>
-                        </div>
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Line Name</th>
+                    <th>Capacity (pcs/day)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${productionLines.map(line => {
+                    const cur = getLineCurrentAssignment(line.id);
+                    return `
+                        <tr>
+                            <td style="color:var(--text); font-weight:600">${line.name}</td>
+                            <td>${line.capacity.toLocaleString()}</td>
+                            <td><span class="badge ${cur ? 'badge-active' : 'badge-idle'}">${cur ? 'Active' : 'Idle'}</span></td>
+                            <td>
+                                <button class="btn-sm btn-edit" onclick="editLine('${line.id}')">Edit</button>
+                                &nbsp;
+                                <button class="btn-sm btn-delete" onclick="deleteLine('${line.id}')">Delete</button>
+                            </td>
+                        </tr>
                     `;
-                } else {
-                    html += `<div class="alert alert-success">Line Available</div>`;
-                }
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
 
-                html += `
-                        </div>
-                        <div class="next-feed-date">
-                            📅 Next PO Feed Date: ${nextFeedDate}
-                            <div style="font-size: 0.85em; margin-top: 5px; opacity: 0.8;">
-                                (Feed 2 days before current PO completes)
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
+// ── STYLES LIST (PO tab) ──
+function updateStylesList() {
+    const container = document.getElementById('stylesList');
+    if (!styles.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No POs added yet</div></div>`;
+        return;
+    }
 
-            container.innerHTML = html;
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>PO Number</th>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Deadline</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${styles.map(s => {
+                    const dl = new Date(s.deadline); dl.setHours(0,0,0,0);
+                    const late = dl < today;
+                    return `
+                        <tr>
+                            <td style="color:var(--accent); font-weight:600">${s.number}</td>
+                            <td style="color:var(--text)">${s.name}</td>
+                            <td>${s.quantity.toLocaleString()}</td>
+                            <td class="kv-val ${late ? 'red' : ''}">${formatDate(s.deadline)}</td>
+                            <td>
+                                <button class="btn-sm btn-edit" onclick="editStyle('${s.id}')">Edit</button>
+                                &nbsp;
+                                <button class="btn-sm btn-delete" onclick="deleteStyle('${s.id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// ── ASSIGN DROPDOWNS ──
+function updateAssignDropdowns() {
+    const lineSelect = document.getElementById('assignLine');
+    const styleSelect = document.getElementById('assignStyle');
+
+    const prevLine = lineSelect.value;
+    const prevStyle = styleSelect.value;
+
+    lineSelect.innerHTML = '<option value="">Select a line...</option>' +
+        productionLines.map(l => `<option value="${l.id}">${l.name} · ${l.capacity.toLocaleString()} pcs/day</option>`).join('');
+
+    styleSelect.innerHTML = '<option value="">Select a PO...</option>' +
+        styles.map(s => `<option value="${s.id}">${s.number} — ${s.name} (${s.quantity.toLocaleString()})</option>`).join('');
+
+    if (prevLine) lineSelect.value = prevLine;
+    if (prevStyle) styleSelect.value = prevStyle;
+
+    // Auto-fill start date + preview
+    lineSelect.onchange = function() {
+        if (this.value) {
+            const fd = getNextFeedingDate(this.value);
+            document.getElementById('assignStartDate').value = fd;
         }
+        updatePreview();
+    };
 
-        // Update lines list
-        function updateLinesList() {
-            const container = document.getElementById('linesList');
-            
-            if (productionLines.length === 0) {
-                container.innerHTML = '<p style="color: #999;">No production lines added yet</p>';
-                return;
-            }
+    styleSelect.onchange = updatePreview;
+    document.getElementById('assignStartDate').onchange = updatePreview;
+}
 
-            let html = '';
-            productionLines.forEach(line => {
-                html += `
-                    <div class="status-item">
-                        <span class="status-label">${line.name}</span>
-                        <span class="status-value">${line.capacity} pieces/day</span>
-                    </div>
-                `;
-            });
+function updatePreview() {
+    const lineId = document.getElementById('assignLine').value;
+    const styleId = document.getElementById('assignStyle').value;
+    const preview = document.getElementById('calcPreview');
 
-            container.innerHTML = html;
-        }
+    if (lineId && styleId) {
+        const line = productionLines.find(l => l.id === lineId);
+        const style = styles.find(s => s.id === styleId);
+        const days = workingDaysNeeded(style.quantity, line.capacity);
+        document.getElementById('previewDays').textContent = days;
+        preview.style.display = 'flex';
+    } else {
+        preview.style.display = 'none';
+    }
+}
 
-        // Update styles list
-        function updateStylesList() {
-            const container = document.getElementById('stylesList');
-            
-            if (styles.length === 0) {
-                container.innerHTML = '<p style="color: #999;">No purchase orders added yet</p>';
-                return;
-            }
+// ── ASSIGNMENT LIST ──
+function updateAssignmentsList() {
+    const container = document.getElementById('assignmentsList');
+    if (!assignments.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No assignments yet</div></div>`;
+        return;
+    }
 
-            let html = '';
-            styles.forEach(style => {
-                html += `
-                    <div class="production-line" style="padding: 15px;">
-                        <div class="status-item">
-                            <span class="status-label">PO Number:</span>
-                            <span class="status-value">${style.number}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Description:</span>
-                            <span class="status-value">${style.name}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Quantity:</span>
-                            <span class="status-value">${style.quantity} pieces</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Deadline:</span>
-                            <span class="status-value">${style.deadline}</span>
-                        </div>
-                    </div>
-                `;
-            });
+    const sorted = [...assignments].sort((a,b) => new Date(b.startDate) - new Date(a.startDate));
 
-            container.innerHTML = html;
-        }
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Line</th>
+                    <th>PO</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Working Days</th>
+                    <th>Progress</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${sorted.map(a => {
+                    const line = productionLines.find(l => l.id === a.lineId);
+                    const style = styles.find(s => s.id === a.styleId);
+                    const pct = getProductionProgress(a);
+                    return `
+                        <tr>
+                            <td style="color:var(--text);font-weight:600">${line ? line.name : '?'}</td>
+                            <td style="color:var(--accent)">${style ? style.number : '?'}</td>
+                            <td>${formatDate(a.startDate)}</td>
+                            <td>${formatDate(a.endDate)}</td>
+                            <td>${a.daysNeeded}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <div class="progress-bar" style="width:80px; display:inline-block">
+                                        <div class="progress-fill ${pct>=75?'green':''}" style="width:${pct}%"></div>
+                                    </div>
+                                    <span style="font-family:var(--mono);font-size:11px;color:var(--text2)">${pct}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn-sm btn-delete" onclick="deleteAssignment('${a.id}')">Remove</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
 
-        // Update assignment dropdowns
-        function updateAssignDropdowns() {
-            const lineSelect = document.getElementById('assignLine');
-            const styleSelect = document.getElementById('assignStyle');
+// ============================================
+// EDIT / DELETE
+// ============================================
+function editLine(id) {
+    const line = productionLines.find(l => l.id === id);
+    if (!line) return;
+    editingType = 'line';
+    editingId = id;
+    document.getElementById('editModalTitle').textContent = 'Edit Production Line';
+    document.getElementById('editModalBody').innerHTML = `
+        <div class="form-field" style="margin-bottom:16px">
+            <label>Line Name</label>
+            <input type="text" class="field-input" id="editField1" value="${line.name}">
+        </div>
+        <div class="form-field">
+            <label>Daily Capacity (pcs/day)</label>
+            <input type="number" class="field-input" id="editField2" value="${line.capacity}">
+        </div>
+    `;
+    document.getElementById('editModal').classList.add('open');
+}
 
-            lineSelect.innerHTML = '<option value="">Select a line...</option>';
-            productionLines.forEach(line => {
-                lineSelect.innerHTML += `<option value="${line.id}">${line.name} (${line.capacity} pcs/day)</option>`;
-            });
+function editStyle(id) {
+    const s = styles.find(x => x.id === id);
+    if (!s) return;
+    editingType = 'style';
+    editingId = id;
+    document.getElementById('editModalTitle').textContent = 'Edit Purchase Order';
+    document.getElementById('editModalBody').innerHTML = `
+        <div class="form-grid">
+            <div class="form-field">
+                <label>PO Number</label>
+                <input type="text" class="field-input" id="editField1" value="${s.number}">
+            </div>
+            <div class="form-field">
+                <label>Description</label>
+                <input type="text" class="field-input" id="editField2" value="${s.name}">
+            </div>
+            <div class="form-field">
+                <label>Quantity</label>
+                <input type="number" class="field-input" id="editField3" value="${s.quantity}">
+            </div>
+            <div class="form-field">
+                <label>Deadline</label>
+                <input type="date" class="field-input" id="editField4" value="${s.deadline}">
+            </div>
+        </div>
+    `;
+    document.getElementById('editModal').classList.add('open');
+}
 
-            styleSelect.innerHTML = '<option value="">Select a PO...</option>';
-            styles.forEach(style => {
-                styleSelect.innerHTML += `<option value="${style.id}">${style.number} - ${style.name}</option>`;
-            });
+function saveEdit() {
+    if (editingType === 'line') {
+        const idx = productionLines.findIndex(l => l.id === editingId);
+        if (idx < 0) return;
+        productionLines[idx].name = document.getElementById('editField1').value.trim();
+        productionLines[idx].capacity = parseInt(document.getElementById('editField2').value);
+        showToast('Line updated', 'success');
+    } else if (editingType === 'style') {
+        const idx = styles.findIndex(s => s.id === editingId);
+        if (idx < 0) return;
+        styles[idx].number = document.getElementById('editField1').value.trim();
+        styles[idx].name = document.getElementById('editField2').value.trim();
+        styles[idx].quantity = parseInt(document.getElementById('editField3').value);
+        styles[idx].deadline = document.getElementById('editField4').value;
+        showToast('PO updated', 'success');
+    }
+    closeModal();
+    saveData();
+    updateUI();
+}
 
-            // Add event listener to auto-fill start date when line is selected
-            lineSelect.addEventListener('change', function() {
-                const selectedLineId = this.value;
-                if (selectedLineId) {
-                    const nextFeedDate = getNextFeedingDate(selectedLineId);
-                    document.getElementById('assignStartDate').value = nextFeedDate;
-                }
-            });
-        }
+function closeModal() {
+    document.getElementById('editModal').classList.remove('open');
+    editingType = null; editingId = null;
+}
 
-        // Note: App initialization is handled by Firebase auth state listener
-    </script>
+function deleteLine(id) {
+    if (!confirm('Delete this production line? This will also remove its assignments.')) return;
+    productionLines = productionLines.filter(l => l.id !== id);
+    assignments = assignments.filter(a => a.lineId !== id);
+    saveData();
+    showToast('Line deleted', 'success');
+    updateUI();
+}
+
+function deleteStyle(id) {
+    if (!confirm('Delete this PO? This will also remove its assignments.')) return;
+    styles = styles.filter(s => s.id !== id);
+    assignments = assignments.filter(a => a.styleId !== id);
+    saveData();
+    showToast('PO deleted', 'success');
+    updateUI();
+}
+
+function deleteAssignment(id) {
+    if (!confirm('Remove this assignment?')) return;
+    assignments = assignments.filter(a => a.id !== id);
+    saveData();
+    showToast('Assignment removed', 'success');
+    updateUI();
+}
+
+// ============================================
+// EXPORT
+// ============================================
+function exportExcel() {
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    // Sheet 1: Lines
+    const linesData = productionLines.map(l => {
+        const cur = getLineCurrentAssignment(l.id);
+        const style = cur ? styles.find(s => s.id === cur.styleId) : null;
+        const feed = getNextFeedingDate(l.id);
+        return {
+            'Line Name': l.name,
+            'Capacity (pcs/day)': l.capacity,
+            'Status': cur ? 'Active' : 'Idle',
+            'Current PO': style ? style.number : '—',
+            'Current Style': style ? style.name : '—',
+            'Completion Date': cur ? cur.endDate : '—',
+            'Progress %': cur ? getProductionProgress(cur) + '%' : '0%',
+            'Next Feed Date': feed
+        };
+    });
+
+    // Sheet 2: POs
+    const posData = styles.map(s => ({
+        'PO Number': s.number,
+        'Description': s.name,
+        'Quantity': s.quantity,
+        'Deadline': s.deadline,
+    }));
+
+    // Sheet 3: Assignments
+    const assignData = assignments.map(a => {
+        const line = productionLines.find(l => l.id === a.lineId);
+        const style = styles.find(s => s.id === a.styleId);
+        return {
+            'Line': line ? line.name : '—',
+            'PO Number': style ? style.number : '—',
+            'PO Description': style ? style.name : '—',
+            'Start Date': a.startDate,
+            'End Date': a.endDate,
+            'Working Days': a.daysNeeded,
+            'Progress %': getProductionProgress(a) + '%'
+        };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linesData), 'Lines Overview');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(posData), 'Purchase Orders');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(assignData), 'Assignments');
+
+    XLSX.writeFile(wb, `DAG_FactoryPlan_${toISODate(new Date())}.xlsx`);
+    showToast('Excel exported successfully', 'success');
+}
+
+function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const today = toISODate(new Date());
+
+    // Header
+    doc.setFillColor(245, 166, 35);
+    doc.rect(0, 0, doc.internal.pageSize.width, 18, 'F');
+    doc.setTextColor(0,0,0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('DAG GARMENT FACTORY — PRODUCTION PLAN', 14, 12);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${today}`, doc.internal.pageSize.width - 14, 12, { align: 'right' });
+
+    // Lines table
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PRODUCTION LINES OVERVIEW', 14, 28);
+
+    const linesRows = productionLines.map(l => {
+        const cur = getLineCurrentAssignment(l.id);
+        const style = cur ? styles.find(s => s.id === cur.styleId) : null;
+        const feed = getNextFeedingDate(l.id);
+        return [
+            l.name,
+            l.capacity.toLocaleString(),
+            cur ? 'Active' : 'Idle',
+            style ? style.number : '—',
+            style ? style.name : '—',
+            cur ? cur.endDate : '—',
+            cur ? getProductionProgress(cur) + '%' : '0%',
+            feed
+        ];
+    });
+
+    doc.autoTable({
+        startY: 32,
+        head: [['Line','Capacity','Status','PO No.','Style','Completion','Progress','Next Feed']],
+        body: linesRows,
+        theme: 'grid',
+        headStyles: { fillColor: [30,30,30], textColor: [245,166,35], fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8, textColor: [40,40,40] },
+        alternateRowStyles: { fillColor: [245,245,245] },
+        styles: { font: 'helvetica' }
+    });
+
+    // Assignments on new page
+    doc.addPage();
+    doc.setFillColor(245, 166, 35);
+    doc.rect(0, 0, doc.internal.pageSize.width, 18, 'F');
+    doc.setTextColor(0,0,0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('DAG GARMENT FACTORY — ASSIGNMENTS', 14, 12);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${today}`, doc.internal.pageSize.width - 14, 12, { align: 'right' });
+
+    doc.setFontSize(10);
+    doc.text('ASSIGNMENT HISTORY', 14, 28);
+
+    const assignRows = assignments.map(a => {
+        const line = productionLines.find(l => l.id === a.lineId);
+        const style = styles.find(s => s.id === a.styleId);
+        return [
+            line ? line.name : '—',
+            style ? style.number : '—',
+            style ? style.name : '—',
+            a.startDate,
+            a.endDate,
+            a.daysNeeded,
+            getProductionProgress(a) + '%'
+        ];
+    });
+
+    doc.autoTable({
+        startY: 32,
+        head: [['Line','PO No.','Description','Start','End','Working Days','Progress']],
+        body: assignRows,
+        theme: 'grid',
+        headStyles: { fillColor: [30,30,30], textColor: [245,166,35], fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8, textColor: [40,40,40] },
+        alternateRowStyles: { fillColor: [245,245,245] },
+    });
+
+    doc.save(`DAG_FactoryPlan_${today}.pdf`);
+    showToast('PDF exported successfully', 'success');
+}
+
+// ============================================
+// TOAST
+// ============================================
+let toastTimer;
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// Click outside modal to close
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
 </body>
 </html>
