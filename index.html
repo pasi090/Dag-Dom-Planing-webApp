@@ -1406,10 +1406,14 @@ function updateDashboardLines() {
                         <span class="kv-key">Start</span>
                         <span class="kv-val">${formatDate(cur.startDate)}</span>
                     </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Completion</span>
-                        <span class="kv-val ${isLate ? 'red' : 'accent'}">${formatDate(cur.endDate)}</span>
-                    </div>
+                   <div class="kv-row">
+    <span class="kv-key">Completion</span>
+    <span class="kv-val ${isLate ? 'red' : 'accent'}">${formatDate(cur.endDate)}</span>
+</div>
+<div class="kv-row">
+    <span class="kv-key">📦 Delivery Date</span>
+    <span class="kv-val green">${formatDate(cur.deliveryDate || cur.endDate)}</span>
+</div>
                 </div>
             `;
         } else {
