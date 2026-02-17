@@ -1233,21 +1233,34 @@ function assignStyleToLine() {
 
     const line = productionLines.find(l => l.id === lineId);
     const style = styles.find(s => s.id === styleId);
-    const days = workingDaysNeeded(style.quantity, line.capacity);
-    const endDateObj = addWorkingDays(startDate, days);
-    const endDate = toISODate(endDateObj);
 
- assignments.push({
-    id: `assign-${Date.now()}`,
-    lineId, styleId, startDate, endDate,
-    deliveryDate: endDate,
-    daysNeeded: days
-});
+    // Get the last end date for this line — chain from it
+    const lineAssignments = assignments
+        .filter(a => a.lineId === lineId)
+        .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+
+    const chainStartDate = lineAssignments.length > 0
+        ? lineAssignments[0].endDate   // start exactly where last PO ends
+        : startDate;                   // no previous PO — use selected date
+
+    const days = workingDaysNeeded(style.quantity, line.capacity);
+    const endDateObj = addWorkingDays(chainStartDate, days);
+    const endDate = toISODate(endDateObj);
+    const deliveryDate = endDate;
+
+    assignments.push({
+        id: `assign-${Date.now()}`,
+        lineId, styleId,
+        startDate: chainStartDate,
+        endDate,
+        deliveryDate,
+        daysNeeded: days
+    });
 
     document.getElementById('assignStartDate').value = '';
     document.getElementById('calcPreview').style.display = 'none';
     saveData();
-    showToast(`Assigned! ${days} working days → completes ${formatDate(endDate)}`, 'success');
+    showToast(`Assigned! Starts ${formatDate(chainStartDate)} → completes ${formatDate(endDate)}`, 'success');
     switchTab('dashboard', document.querySelector('.nav-tab'));
     updateUI();
 }
