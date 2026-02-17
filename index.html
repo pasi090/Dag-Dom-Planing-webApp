@@ -1237,11 +1237,12 @@ function assignStyleToLine() {
     const endDateObj = addWorkingDays(startDate, days);
     const endDate = toISODate(endDateObj);
 
-    assignments.push({
-        id: `assign-${Date.now()}`,
-        lineId, styleId, startDate, endDate,
-        daysNeeded: days
-    });
+ assignments.push({
+    id: `assign-${Date.now()}`,
+    lineId, styleId, startDate, endDate,
+    deliveryDate: endDate,
+    daysNeeded: days
+});
 
     document.getElementById('assignStartDate').value = '';
     document.getElementById('calcPreview').style.display = 'none';
