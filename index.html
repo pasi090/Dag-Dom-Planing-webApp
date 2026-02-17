@@ -1804,6 +1804,34 @@ function closeModal() {
     document.getElementById('editModal').classList.remove('open');
     editingType = null; editingId = null;
 }
+    function editAssignment(id) {
+    const a = assignments.find(x => x.id === id);
+    if (!a) return;
+    editingType = 'assignment';
+    editingId = id;
+    document.getElementById('editModalTitle').textContent = 'Edit Assignment';
+    document.getElementById('editModalBody').innerHTML = `
+        <div class="form-grid">
+            <div class="form-field">
+                <label>Production Line</label>
+                <select class="field-input" id="editField1">
+                    ${productionLines.map(l => `<option value="${l.id}" ${l.id === a.lineId ? 'selected' : ''}>${l.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-field">
+                <label>Purchase Order</label>
+                <select class="field-input" id="editField2">
+                    ${styles.map(s => `<option value="${s.id}" ${s.id === a.styleId ? 'selected' : ''}>${s.number} — ${s.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-field">
+                <label>Start Date</label>
+                <input type="date" class="field-input" id="editField3" value="${a.startDate}">
+            </div>
+        </div>
+    `;
+    document.getElementById('editModal').classList.add('open');
+}
 
 function deleteLine(id) {
     if (!confirm('Delete this production line? This will also remove its assignments.')) return;
