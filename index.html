@@ -727,6 +727,40 @@
             .stats-row { grid-template-columns: 1fr 1fr; }
         }
 
+        /* ── SEARCH ── */
+        .search-wrap {
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .search-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            color: var(--text);
+            padding: 10px 14px 10px 38px;
+            font-family: var(--mono);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: var(--accent); }
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text3);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .search-count {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+
         /* ── TOAST ── */
         .toast {
             position: fixed;
@@ -828,6 +862,11 @@
                 <canvas id="progressChart" height="90"></canvas>
             </div>
 
+            <div class="search-wrap" style="margin-bottom:18px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchDash" placeholder="Search by line name or PO..." oninput="filterDashboard(this.value)">
+                <div class="search-count" id="searchDashCount"></div>
+            </div>
             <div class="page-title" style="margin-bottom:16px; letter-spacing:2px; font-family:var(--mono); font-size:9px; text-transform:uppercase; color:var(--text3);">Active Lines</div>
             <div class="lines-grid" id="dashboardLines"></div>
         </div>
@@ -860,6 +899,11 @@
 
             <div class="form-card">
                 <div class="form-card-title">Existing Lines</div>
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchLines" placeholder="Search lines..." oninput="filterLines(this.value)">
+                    <div class="search-count" id="searchLinesCount"></div>
+                </div>
                 <div id="linesList">
                     <div class="empty-state"><div class="empty-state-icon">⚙️</div><div class="empty-state-text">No lines added yet</div></div>
                 </div>
@@ -902,6 +946,11 @@
 
             <div class="form-card">
                 <div class="form-card-title">All Purchase Orders</div>
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchStyles" placeholder="Search by PO number or description..." oninput="filterStyles(this.value)">
+                    <div class="search-count" id="searchStylesCount"></div>
+                </div>
                 <div id="stylesList">
                     <div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No POs added yet</div></div>
                 </div>
@@ -951,6 +1000,11 @@
 
             <div class="form-card">
                 <div class="form-card-title">Assignment History</div>
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchAssign" placeholder="Search by line or PO..." oninput="filterAssignments(this.value)">
+                    <div class="search-count" id="searchAssignCount"></div>
+                </div>
                 <div id="assignmentsList">
                     <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No assignments yet</div></div>
                 </div>
@@ -1931,6 +1985,66 @@ function showToast(msg, type = 'success') {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
 }
+// ============================================
+// SEARCH / FILTER FUNCTIONS
+// ============================================
+
+function filterDashboard(query) {
+    const q = query.toLowerCase();
+    const cards = document.querySelectorAll("#dashboardLines .line-card");
+    let visible = 0;
+    cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        const show = !q || text.includes(q);
+        card.style.display = show ? "" : "none";
+        if (show) visible++;
+    });
+    const el = document.getElementById("searchDashCount");
+    if (el) el.textContent = q ? visible + " of " + cards.length + " lines" : "";
+}
+
+function filterLines(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll("#linesList tbody tr");
+    let visible = 0;
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const show = !q || text.includes(q);
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+    });
+    const el = document.getElementById("searchLinesCount");
+    if (el) el.textContent = q ? visible + " of " + rows.length + " lines" : "";
+}
+
+function filterStyles(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll("#stylesList tbody tr");
+    let visible = 0;
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const show = !q || text.includes(q);
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+    });
+    const el = document.getElementById("searchStylesCount");
+    if (el) el.textContent = q ? visible + " of " + rows.length + " POs" : "";
+}
+
+function filterAssignments(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll("#assignmentsList tbody tr");
+    let visible = 0;
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const show = !q || text.includes(q);
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+    });
+    const el = document.getElementById("searchAssignCount");
+    if (el) el.textContent = q ? visible + " of " + rows.length + " assignments" : "";
+}
+
 
 // Click outside modal to close
 document.getElementById('editModal').addEventListener('click', function(e) {
