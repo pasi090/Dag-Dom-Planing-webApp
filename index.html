@@ -1617,17 +1617,17 @@ function updateAssignDropdowns() {
     if (prevStyle) styleSelect.value = prevStyle;
 
     // Auto-fill start date + preview
-    lineSelect.onchange = function() {
-        if (this.value) {
-            const fd = getNextFeedingDate(this.value);
-            document.getElementById('assignStartDate').value = fd;
-        }
-        updatePreview();
-    };
-
-    styleSelect.onchange = updatePreview;
-    document.getElementById('assignStartDate').onchange = updatePreview;
-}
+   updatePreview();
+    // One-time assign page event listeners
+document.getElementById('assignLine').addEventListener('change', function() {
+    if (this.value) {
+        const fd = getNextFeedingDate(this.value);
+        document.getElementById('assignStartDate').value = fd;
+    }
+    updatePreview();
+});
+document.getElementById('assignStyle').addEventListener('change', updatePreview);
+document.getElementById('assignStartDate').addEventListener('change', updatePreview);
 
 function updatePreview() {
     const lineId = document.getElementById('assignLine').value;
