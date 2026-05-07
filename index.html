@@ -1,2096 +1,1722 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAG Garment Factory Planner</title>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-    <!-- Chart.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-
-    <!-- jsPDF + AutoTable for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-
-    <!-- SheetJS for Excel export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            --bg: #0f0f0f;
-            --surface: #1a1a1a;
-            --surface2: #222222;
-            --surface3: #2a2a2a;
-            --border: #333333;
-            --border2: #444444;
-            --accent: #f5a623;
-            --accent2: #e8901a;
-            --accent-dim: rgba(245,166,35,0.12);
-            --green: #2ecc71;
-            --green-dim: rgba(46,204,113,0.12);
-            --red: #e74c3c;
-            --red-dim: rgba(231,76,60,0.12);
-            --blue: #3498db;
-            --blue-dim: rgba(52,152,219,0.12);
-            --text: #f0f0f0;
-            --text2: #aaaaaa;
-            --text3: #666666;
-            --mono: 'IBM Plex Mono', monospace;
-            --sans: 'IBM Plex Sans', sans-serif;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: var(--sans);
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-        }
-
-        /* ── SCROLLBAR ── */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-        /* ══════════════════════════════════════
-           LOGIN SCREEN
-        ══════════════════════════════════════ */
-        #loginContainer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background: var(--bg);
-            background-image:
-                repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
-                repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
-        }
-
-        .login-box {
-            background: var(--surface);
-            border: 1px solid var(--border2);
-            padding: 50px 44px;
-            width: 420px;
-            position: relative;
-        }
-
-        .login-box::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: var(--accent);
-        }
-
-        .login-logo {
-            font-family: var(--mono);
-            font-size: 11px;
-            letter-spacing: 4px;
-            color: var(--accent);
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .login-title {
-            font-size: 26px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .login-sub {
-            font-size: 13px;
-            color: var(--text2);
-            margin-bottom: 36px;
-        }
-
-        .field-label {
-            font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text3);
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .field-input {
-            width: 100%;
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            color: var(--text);
-            padding: 12px 14px;
-            font-family: var(--mono);
-            font-size: 14px;
-            margin-bottom: 20px;
-            transition: border-color 0.2s;
-            outline: none;
-        }
-
-        .field-input:focus { border-color: var(--accent); }
-
-        .btn-primary {
-            width: 100%;
-            padding: 14px;
-            background: var(--accent);
-            border: none;
-            color: #000;
-            font-family: var(--mono);
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        .btn-primary:hover { background: var(--accent2); }
-        .btn-primary:active { transform: scale(0.99); }
-
-        .btn-outline {
-            width: 100%;
-            padding: 12px;
-            background: transparent;
-            border: 1px solid var(--border2);
-            color: var(--text2);
-            font-family: var(--mono);
-            font-size: 12px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: border-color 0.2s, color 0.2s;
-        }
-
-        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-
-        #authMessage {
-            font-family: var(--mono);
-            font-size: 12px;
-            margin-top: 14px;
-            text-align: center;
-        }
-
-        /* ══════════════════════════════════════
-           APP SHELL
-        ══════════════════════════════════════ */
-        #appContent { display: none; min-height: 100vh; }
-
-        .topbar {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            padding: 0 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 60px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .topbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .topbar-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-
-        .topbar-title {
-            font-family: var(--mono);
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .topbar-user {
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text3);
-        }
-
-        .btn-logout {
-            padding: 6px 16px;
-            background: transparent;
-            border: 1px solid var(--border2);
-            color: var(--text2);
-            font-family: var(--mono);
-            font-size: 11px;
-            cursor: pointer;
-            letter-spacing: 1px;
-            transition: all 0.2s;
-        }
-
-        .btn-logout:hover { border-color: var(--red); color: var(--red); }
-
-        /* ── NAV TABS ── */
-        .nav-tabs {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            padding: 0 32px;
-            gap: 2px;
-        }
-
-        .nav-tab {
-            padding: 14px 22px;
-            font-family: var(--mono);
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            color: var(--text3);
-            border-bottom: 2px solid transparent;
-            transition: color 0.2s, border-color 0.2s;
-            margin-bottom: -1px;
-        }
-
-        .nav-tab:hover { color: var(--text2); }
-        .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-        /* ── MAIN CONTENT ── */
-        .main-content {
-            padding: 32px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .tab-pane { display: none; }
-        .tab-pane.active { display: block; }
-
-        /* ── PAGE HEADER ── */
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 28px;
-        }
-
-        .page-title {
-            font-family: var(--mono);
-            font-size: 11px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text3);
-            margin-bottom: 4px;
-        }
-
-        .page-heading {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        /* ── STAT CARDS ── */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 28px;
-        }
-
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 20px 22px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 2px;
-        }
-
-        .stat-card.amber::after { background: var(--accent); }
-        .stat-card.green::after { background: var(--green); }
-        .stat-card.blue::after { background: var(--blue); }
-        .stat-card.red::after { background: var(--red); }
-
-        .stat-label {
-            font-family: var(--mono);
-            font-size: 9px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text3);
-            margin-bottom: 10px;
-        }
-
-        .stat-value {
-            font-family: var(--mono);
-            font-size: 32px;
-            font-weight: 700;
-        }
-
-        .stat-card.amber .stat-value { color: var(--accent); }
-        .stat-card.green .stat-value { color: var(--green); }
-        .stat-card.blue .stat-value { color: var(--blue); }
-        .stat-card.red .stat-value { color: var(--red); }
-
-        .stat-sub {
-            font-size: 12px;
-            color: var(--text3);
-            margin-top: 4px;
-        }
-
-        /* ── LINE CARDS ── */
-        .lines-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 16px;
-        }
-
-        .line-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 22px;
-            position: relative;
-            transition: border-color 0.2s;
-        }
-
-        .line-card:hover { border-color: var(--border2); }
-
-        .line-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-        }
-
-        .line-card-name {
-            font-family: var(--mono);
-            font-size: 15px;
-            font-weight: 700;
-        }
-
-        .line-card-cap {
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text3);
-            margin-top: 3px;
-        }
-
-        .badge {
-            font-family: var(--mono);
-            font-size: 9px;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            padding: 4px 10px;
-            border: 1px solid;
-        }
-
-        .badge-active { color: var(--green); border-color: var(--green); background: var(--green-dim); }
-        .badge-idle { color: var(--text3); border-color: var(--border2); }
-        .badge-warning { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
-
-        /* ── PROGRESS BAR ── */
-        .progress-wrap {
-            margin: 14px 0;
-        }
-
-        .progress-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .progress-label {
-            font-family: var(--mono);
-            font-size: 10px;
-            color: var(--text2);
-        }
-
-        .progress-pct {
-            font-family: var(--mono);
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .progress-bar {
-            height: 4px;
-            background: var(--surface3);
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--accent);
-            transition: width 0.6s ease;
-        }
-
-        .progress-fill.green { background: var(--green); }
-        .progress-fill.red { background: var(--red); }
-
-        /* ── KV ROWS ── */
-        .kv-list { display: flex; flex-direction: column; gap: 8px; }
-
-        .kv-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: var(--surface2);
-        }
-
-        .kv-key {
-            font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--text3);
-        }
-
-        .kv-val {
-            font-family: var(--mono);
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .kv-val.accent { color: var(--accent); }
-        .kv-val.green { color: var(--green); }
-        .kv-val.red { color: var(--red); }
-
-        /* ── FEED DATE BOX ── */
-        .feed-box {
-            margin-top: 14px;
-            padding: 12px 16px;
-            background: var(--accent-dim);
-            border: 1px solid rgba(245,166,35,0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .feed-label {
-            font-family: var(--mono);
-            font-size: 9px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--accent);
-        }
-
-        .feed-date {
-            font-family: var(--mono);
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        /* ── CHART SECTION ── */
-        .chart-section {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 24px;
-            margin-bottom: 28px;
-        }
-
-        .chart-title {
-            font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text3);
-            margin-bottom: 20px;
-        }
-
-        /* ── FORM SECTIONS ── */
-        .form-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 28px;
-            margin-bottom: 24px;
-        }
-
-        .form-card-title {
-            font-family: var(--mono);
-            font-size: 10px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: 22px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-        }
-
-        .form-field { display: flex; flex-direction: column; }
-
-        .form-field label {
-            font-family: var(--mono);
-            font-size: 9px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text3);
-            margin-bottom: 8px;
-        }
-
-        .form-field input,
-        .form-field select {
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            color: var(--text);
-            padding: 11px 14px;
-            font-family: var(--mono);
-            font-size: 13px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .form-field input:focus,
-        .form-field select:focus { border-color: var(--accent); }
-
-        .form-field select option { background: var(--surface2); }
-
-        .form-actions { margin-top: 20px; display: flex; gap: 12px; }
-
-        .btn-submit {
-            padding: 12px 28px;
-            background: var(--accent);
-            border: none;
-            color: #000;
-            font-family: var(--mono);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-submit:hover { background: var(--accent2); }
-
-        /* ── TABLE ── */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th {
-            font-family: var(--mono);
-            font-size: 9px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text3);
-            padding: 10px 14px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface2);
-        }
-
-        .data-table td {
-            padding: 12px 14px;
-            font-size: 13px;
-            border-bottom: 1px solid var(--border);
-            font-family: var(--mono);
-            color: var(--text2);
-        }
-
-        .data-table tr:hover td { background: var(--surface2); }
-
-        /* ── ACTION BUTTONS (small) ── */
-        .btn-sm {
-            padding: 5px 12px;
-            font-family: var(--mono);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            cursor: pointer;
-            border: 1px solid;
-            background: transparent;
-            text-transform: uppercase;
-            transition: all 0.15s;
-        }
-
-        .btn-edit { color: var(--blue); border-color: var(--blue); }
-        .btn-edit:hover { background: var(--blue-dim); }
-
-        .btn-delete { color: var(--red); border-color: var(--red); }
-        .btn-delete:hover { background: var(--red-dim); }
-
-        /* ── EXPORT BUTTONS ── */
-        .export-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .btn-export {
-            padding: 9px 20px;
-            background: transparent;
-            border: 1px solid var(--border2);
-            color: var(--text2);
-            font-family: var(--mono);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-export:hover { border-color: var(--accent); color: var(--accent); }
-
-        /* ── MODAL ── */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.open { display: flex; }
-
-        .modal-box {
-            background: var(--surface);
-            border: 1px solid var(--border2);
-            border-top: 2px solid var(--accent);
-            padding: 36px;
-            width: 500px;
-            max-width: 95vw;
-        }
-
-        .modal-title {
-            font-family: var(--mono);
-            font-size: 11px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: 22px;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 22px;
-        }
-
-        /* ── EMPTY STATE ── */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text3);
-            font-family: var(--mono);
-        }
-
-        .empty-state-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.4; }
-        .empty-state-text { font-size: 12px; letter-spacing: 1px; }
-
-        /* ── RESPONSIVE ── */
-        @media (max-width: 900px) {
-            .stats-row { grid-template-columns: repeat(2, 1fr); }
-            .form-grid { grid-template-columns: 1fr; }
-            .lines-grid { grid-template-columns: 1fr; }
-            .main-content { padding: 16px; }
-            .topbar { padding: 0 16px; }
-            .nav-tabs { padding: 0 16px; overflow-x: auto; }
-        }
-
-        @media (max-width: 500px) {
-            .stats-row { grid-template-columns: 1fr 1fr; }
-        }
-
-        /* ── SEARCH ── */
-        .search-wrap {
-            margin-bottom: 16px;
-            position: relative;
-        }
-        .search-input {
-            width: 100%;
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            color: var(--text);
-            padding: 10px 14px 10px 38px;
-            font-family: var(--mono);
-            font-size: 13px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .search-input:focus { border-color: var(--accent); }
-        .search-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text3);
-            font-size: 14px;
-            pointer-events: none;
-        }
-        .search-count {
-            font-family: var(--mono);
-            font-size: 10px;
-            color: var(--text3);
-            margin-top: 8px;
-            letter-spacing: 1px;
-        }
-
-        /* ── TOAST ── */
-        .toast {
-            position: fixed;
-            bottom: 28px;
-            right: 28px;
-            background: var(--surface);
-            border: 1px solid var(--border2);
-            border-left: 3px solid var(--accent);
-            padding: 14px 20px;
-            font-family: var(--mono);
-            font-size: 12px;
-            z-index: 2000;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.3s, transform 0.3s;
-            pointer-events: none;
-        }
-
-        .toast.show { opacity: 1; transform: translateY(0); }
-        .toast.success { border-left-color: var(--green); }
-        .toast.error { border-left-color: var(--red); }
-
-        /* ── SECTION DIVIDER ── */
-        .section-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 28px 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FabricFlow Pro | Fabric Inventory Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2230;
+  --surface3: #21293a;
+  --border: #2a3448;
+  --border2: #334155;
+  --gold: #d4a853;
+  --gold2: #f0c97a;
+  --gold-dim: rgba(212,168,83,0.12);
+  --gold-glow: rgba(212,168,83,0.25);
+  --text: #e8eaf0;
+  --text2: #8b95a8;
+  --text3: #5a6476;
+  --danger: #e05252;
+  --danger-bg: rgba(224,82,82,0.12);
+  --success: #3ecf8e;
+  --success-bg: rgba(62,207,142,0.1);
+  --warn: #f59e0b;
+  --warn-bg: rgba(245,158,11,0.1);
+  --info: #60a5fa;
+  --info-bg: rgba(96,165,250,0.1);
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; height: 100vh; overflow: hidden; }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; height: 100vh; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.brand {
+  padding: 28px 22px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.brand-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
+.brand-sub { font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+
+.nav { padding: 16px 12px; flex: 1; }
+.nav-section { font-size: 9px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; padding: 8px 10px 6px; }
+.nav-btn {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 11px 14px;
+  background: none; border: none; color: var(--text2);
+  border-radius: var(--radius); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500;
+  margin-bottom: 3px; transition: all 0.2s; text-align: left;
+}
+.nav-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+.nav-btn:hover { background: var(--surface3); color: var(--text); }
+.nav-btn.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; }
+.nav-btn.active svg { stroke: var(--gold); }
+
+.sidebar-footer {
+  padding: 16px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text3);
+}
+
+/* ─── MAIN ─── */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.topbar {
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; background: var(--surface);
+}
+.topbar-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--text); }
+.topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+.viewport { flex: 1; overflow-y: auto; padding: 28px 32px; }
+
+/* ─── VIEWS ─── */
+.view { display: none; }
+.view.active { display: block; animation: fadeUp 0.25s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ─── STAT CARDS ─── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  position: relative; overflow: hidden;
+}
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.stat-card.gold::before { background: var(--gold); }
+.stat-card.green::before { background: var(--success); }
+.stat-card.red::before { background: var(--danger); }
+.stat-card.blue::before { background: var(--info); }
+.stat-label { font-size: 10px; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
+.stat-value { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 700; color: var(--text); margin: 6px 0 2px; line-height: 1; }
+.stat-note { font-size: 11px; color: var(--text3); }
+.stat-icon {
+  position: absolute; right: 18px; top: 18px;
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.stat-icon.gold { background: var(--gold-dim); color: var(--gold); }
+.stat-icon.green { background: var(--success-bg); color: var(--success); }
+.stat-icon.red { background: var(--danger-bg); color: var(--danger); }
+.stat-icon.blue { background: var(--info-bg); color: var(--info); }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 22px;
+  margin-bottom: 20px;
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 14px; flex-wrap: wrap; }
+.card-title { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: 0.2px; }
+.card-subtitle { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* ─── BUTTONS ─── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px; border-radius: var(--radius);
+  border: none; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600; transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn svg { width: 15px; height: 15px; }
+.btn-gold { background: var(--gold); color: #0d1117; }
+.btn-gold:hover { background: var(--gold2); }
+.btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(224,82,82,0.2); }
+.btn-danger:hover { background: rgba(224,82,82,0.2); }
+.btn-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(62,207,142,0.2); }
+.btn-success:hover { background: rgba(62,207,142,0.2); }
+.btn-ghost { background: none; border: none; color: var(--text3); padding: 6px; border-radius: 6px; cursor: pointer; transition: 0.15s; display: inline-flex; align-items: center; }
+.btn-ghost:hover { background: var(--surface3); color: var(--text); }
+.btn-ghost svg { width: 15px; height: 15px; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* ─── FORMS ─── */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 1.2px; text-transform: uppercase; }
+input, select, textarea {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 13px;
+  color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px;
+  transition: 0.15s; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-glow); }
+input::placeholder { color: var(--text3); }
+select option { background: var(--surface); }
+
+/* ─── SEARCH BAR ─── */
+.search-wrap { position: relative; }
+.search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text3); pointer-events: none; }
+.search-wrap input { padding-left: 36px; min-width: 220px; }
+
+/* ─── TABLE ─── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 10px 14px; text-align: left;
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  letter-spacing: 1.2px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface3); }
+td { padding: 11px 14px; font-size: 13px; }
+td.mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+/* ─── BADGES ─── */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.badge-ok { background: var(--success-bg); color: var(--success); }
+.badge-low { background: var(--warn-bg); color: var(--warn); }
+.badge-critical { background: var(--danger-bg); color: var(--danger); }
+.badge-inward { background: var(--info-bg); color: var(--info); }
+.badge-issue { background: var(--gold-dim); color: var(--gold); }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* ─── FABRIC ACCORDION (Dashboard) ─── */
+.fabric-row { cursor: pointer; }
+.fabric-row td:first-child { font-weight: 700; color: var(--text); }
+.expand-icon { transition: transform 0.2s; display: inline-block; }
+.expand-icon.open { transform: rotate(90deg); }
+.roll-row { background: var(--surface3) !important; }
+.roll-row td:first-child { padding-left: 36px; color: var(--text2); font-size: 12px; }
+.roll-row td { font-size: 12px; }
+
+/* ─── PROGRESS BAR ─── */
+.stock-bar { height: 5px; background: var(--surface3); border-radius: 10px; margin-top: 4px; overflow: hidden; min-width: 60px; }
+.stock-fill { height: 100%; border-radius: 10px; transition: width 0.3s; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 200;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 28px;
+  width: 460px; max-width: 95vw;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text3); margin-bottom: 22px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
+
+/* ─── ALERT TOAST ─── */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 10px; }
+.toast {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 18px; border-radius: var(--radius-lg);
+  border: 1px solid; min-width: 280px; max-width: 380px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  animation: toastIn 0.3s ease;
+}
+@keyframes toastIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast.success { background: #0f2018; border-color: rgba(62,207,142,0.3); }
+.toast.error { background: #200f0f; border-color: rgba(224,82,82,0.3); }
+.toast.warn { background: #1f1700; border-color: rgba(245,158,11,0.3); }
+.toast.info { background: #0f1820; border-color: rgba(96,165,250,0.3); }
+.toast-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.toast.success .toast-icon { color: var(--success); }
+.toast.error .toast-icon { color: var(--danger); }
+.toast.warn .toast-icon { color: var(--warn); }
+.toast.info .toast-icon { color: var(--info); }
+.toast-msg { font-size: 13px; font-weight: 500; color: var(--text); }
+.toast-detail { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ─── DIVIDER ─── */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ─── ISSUE CART ─── */
+.cart-empty { text-align: center; padding: 30px; color: var(--text3); font-size: 13px; }
+
+/* ─── TABS ─── */
+.tabs { display: flex; gap: 4px; background: var(--bg); border-radius: var(--radius); padding: 4px; margin-bottom: 20px; width: fit-content; }
+.tab { padding: 7px 16px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text3); transition: 0.15s; border: none; background: none; font-family: 'DM Sans', sans-serif; }
+.tab.active { background: var(--surface3); color: var(--text); }
+
+/* ─── STOCK INDICATOR ─── */
+.qty-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
+.qty-main { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; color: var(--text); line-height: 1; }
+.qty-min { font-size: 10px; color: var(--text3); }
+
+/* ─── REPORT STYLES ─── */
+.report-meta { display: flex; gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; }
+.report-meta-item label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
+.report-meta-item span { font-size: 14px; font-weight: 600; color: var(--text); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════
-     LOGIN
-══════════════════════════════════════ -->
-<div id="loginContainer">
-    <div class="login-box">
-        <div class="login-logo">DAG Systems</div>
-        <div class="login-title">Factory Planner</div>
-        <div class="login-sub">Production Line Management</div>
+<div class="layout">
 
-        <label class="field-label">Email</label>
-        <input type="email" class="field-input" id="loginEmail" placeholder="admin@factory.com">
+<!-- ─── SIDEBAR ─── -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-title">FabricFlow</div>
+    <div class="brand-sub">Inventory Pro</div>
+  </div>
+  <div class="nav">
+    <div class="nav-section">Main</div>
+    <button class="nav-btn active" onclick="goView('dashboard', this)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" onclick="goView('fabrics', this)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" d="M3 7h18M3 12h18M3 17h18"/></svg>
+      Fabric Items
+    </button>
+    <div class="nav-section" style="margin-top:10px;">Transactions</div>
+    <button class="nav-btn" onclick="goView('inward', this)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      Inhouse Entry
+    </button>
+    <button class="nav-btn" onclick="goView('issue', this)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Issue Stock
+    </button>
+    <div class="nav-section" style="margin-top:10px;">Analytics</div>
+    <button class="nav-btn" onclick="goView('stock', this)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h2v8H3zM9 9h2v12H9zM15 5h2v16h-2zM21 3h2v18h-2z"/><path stroke-linecap="round" d="M3 3h18"/></svg>
+      Stock Availability
+    </button>
+    <button class="nav-btn" onclick="goView('reports', this)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6m4 6V9m4 8V5M3 3h18v18H3V3z"/></svg>
+      Reports
+    </button>
+  </div>
+  <div class="sidebar-footer">FabricFlow Pro v2.0</div>
+</nav>
 
-        <label class="field-label">Password</label>
-        <input type="password" class="field-input" id="loginPassword" placeholder="••••••••"
-            onkeydown="if(event.key==='Enter') login()">
+<!-- ─── MAIN ─── -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-actions" id="topbar-actions"></div>
+  </div>
+  <div class="viewport">
 
-        <button class="btn-primary" onclick="login()" id="loginBtn">Sign In</button>
-        <button class="btn-outline" onclick="signup()">Create Account</button>
-
-        <div id="authMessage" style="margin-top:14px; font-family:var(--mono); font-size:12px; text-align:center; min-height:20px;"></div>
+    <!-- ═══════════════ DASHBOARD ═══════════════ -->
+    <div id="view-dashboard" class="view active">
+      <div class="stats-row" id="dash-stats"></div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Fabric Inventory Overview</div>
+            <div class="card-subtitle">Click a fabric row to expand rolls · Sorted by stock status</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="search-wrap">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="dash-search" placeholder="Search fabric, unit, status…" oninput="renderDashboard()" style="min-width:200px;">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th></th>
+              <th>Fabric Item</th>
+              <th>Unit</th>
+              <th>Total Stock</th>
+              <th>Min Stock</th>
+              <th>Issuable</th>
+              <th>Rolls</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody id="dash-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
+
+    <!-- ═══════════════ FABRIC ITEMS ═══════════════ -->
+    <div id="view-fabrics" class="view">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Fabric Item Register</div>
+            <div class="card-subtitle">Manage all fabric items and their minimum stock levels</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="search-wrap">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="fab-search" placeholder="Search fabric…" oninput="renderFabrics()">
+            </div>
+            <button class="btn btn-gold" onclick="openFabricModal()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M12 4v16m8-8H4"/></svg>
+              New Fabric
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Fabric Name</th><th>Category</th><th>Unit</th><th>Min Stock</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="fab-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ INWARD ═══════════════ -->
+    <div id="view-inward" class="view">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:18px;">Add Roll / Inhouse Entry</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Supplier Name *</label>
+            <input id="in-supplier" placeholder="e.g. ABC Textiles">
+          </div>
+          <div class="field">
+            <label>Fabric Item *</label>
+            <select id="in-fabric-sel"><option value="">— Select Fabric —</option></select>
+          </div>
+          <div class="field">
+            <label>Shade</label>
+            <select id="in-shade"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>None</option></select>
+          </div>
+          <div class="field">
+            <label>Roll Number *</label>
+            <input id="in-roll" placeholder="Roll ID / Lot No.">
+          </div>
+          <div class="field">
+            <label>Quantity *</label>
+            <input type="number" id="in-qty" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="in-date">
+          </div>
+        </div>
+        <div style="margin-top:18px; display:flex; gap:10px;">
+          <button class="btn btn-gold" onclick="saveInward()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+            Save Entry
+          </button>
+          <button class="btn btn-outline" onclick="clearInward()">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Roll Register</div>
+            <div class="card-subtitle">All inward rolls — Edit or delete individual rolls</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="search-wrap">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="roll-search" placeholder="Search fabric, roll, supplier…" oninput="renderRolls()">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Supplier</th><th>Fabric</th><th>Shade</th><th>Roll No.</th><th>Qty</th><th>Unit</th><th>Actions</th></tr></thead>
+            <tbody id="roll-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ ISSUE ═══════════════ -->
+    <div id="view-issue" class="view">
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+        <!-- Left: Form + Rolls -->
+        <div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px;">Select Fabric to Issue</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="field">
+                <label>Issue To *</label>
+                <input id="iss-to" placeholder="Department / Buyer / Order No.">
+              </div>
+              <div class="field">
+                <label>Issue Date</label>
+                <input type="date" id="iss-date">
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="form-grid">
+              <div class="field" style="grid-column:1/-1;">
+                <label>Search Fabric / Roll</label>
+                <div class="search-wrap" style="width:100%;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input type="text" id="iss-search" placeholder="Type fabric name or roll number…" oninput="renderIssueRolls()">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:14px;">Available Rolls</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fabric</th><th>Shade</th><th>Roll</th><th>Available Qty</th><th>Issue Qty</th><th>Action</th></tr></thead>
+                <tbody id="avail-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Cart -->
+        <div class="card" style="position:sticky;top:0;">
+          <div class="card-header" style="margin-bottom:14px;">
+            <div class="card-title">Issue Cart</div>
+            <span id="cart-count" class="badge badge-inward">0 items</span>
+          </div>
+          <div id="cart-body-wrap"></div>
+          <div class="divider"></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="finalizeIssue(true)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Finalize &amp; Print
+            </button>
+            <button class="btn btn-outline" style="width:100%;justify-content:center;" onclick="finalizeIssue(false)">
+              Confirm Without Print
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ STOCK AVAILABILITY ═══════════════ -->
+    <div id="view-stock" class="view">
+
+      <!-- Summary stat cards -->
+      <div class="stats-row" id="stock-stats"></div>
+
+      <!-- Filter bar -->
+      <div class="card" style="padding:16px 22px;">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div class="search-wrap" style="flex:1;min-width:200px;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="stk-search" placeholder="Search fabric name or category…" oninput="renderStock()">
+          </div>
+          <div class="field" style="margin:0;min-width:150px;">
+            <select id="stk-status" onchange="renderStock()">
+              <option value="ALL">All Status</option>
+              <option value="ok">Stable</option>
+              <option value="low">Low Stock</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0;min-width:140px;">
+            <select id="stk-unit" onchange="renderStock()">
+              <option value="ALL">All Units</option>
+            </select>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="exportStockPDF()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Export PDF
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportStockCSV()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Main stock table -->
+      <div class="card">
+        <div class="card-header" style="margin-bottom:6px;">
+          <div>
+            <div class="card-title">Fabric Stock Availability</div>
+            <div class="card-subtitle" id="stk-count">—</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th>
+              <th>Fabric Item</th>
+              <th>Category</th>
+              <th>Unit</th>
+              <th>Total Stock</th>
+              <th>Min Stock (Locked)</th>
+              <th>Issuable (Free)</th>
+              <th>Active Rolls</th>
+              <th>Stock Split</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody id="stk-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Per-fabric roll breakdown -->
+      <div class="card" id="stk-rolls-card" style="display:none;">
+        <div class="card-header">
+          <div>
+            <div class="card-title" id="stk-rolls-title">Roll Breakdown</div>
+            <div class="card-subtitle">All active rolls contributing to this fabric's stock</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('stk-rolls-card').style.display='none'">Close</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Roll No.</th><th>Shade</th><th>Supplier</th><th>Date</th><th>Qty</th></tr></thead>
+            <tbody id="stk-rolls-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ REPORTS ═══════════════ -->
+    <div id="view-reports" class="view">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px;">Report Filters</div>
+        <div class="form-grid">
+          <div class="field"><label>From Date</label><input id="rep-from" type="date"></div>
+          <div class="field"><label>To Date</label><input id="rep-to" type="date"></div>
+          <div class="field">
+            <label>Transaction Type</label>
+            <select id="rep-type">
+              <option value="ALL">All Transactions</option>
+              <option value="INWARD">Inward Only</option>
+              <option value="ISSUE">Issue Only</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Fabric</label>
+            <select id="rep-fabric"><option value="">All Fabrics</option></select>
+          </div>
+          <div class="field" style="justify-content:flex-end;">
+            <button class="btn btn-gold" onclick="generateReport()" style="margin-top:auto;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Generate
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="rep-result" style="display:none;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Transaction Report</div>
+            <div id="rep-summary" class="card-subtitle"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="search-wrap">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="rep-search" placeholder="Search results…" oninput="filterReportTable()">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="exportCSV()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="exportPDF()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Export PDF
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Fabric</th><th>Shade</th><th>Roll No.</th><th>Ref / Supplier</th><th>Qty</th><th>Unit</th></tr></thead>
+            <tbody id="rep-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.viewport -->
+</main>
+</div><!-- /.layout -->
+
+<!-- ─── FABRIC MODAL ─── -->
+<div id="fab-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="fab-modal-title">New Fabric Item</div>
+    <div class="modal-sub">Register a new fabric type with minimum stock level</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field"><label>Fabric Name *</label><input id="fm-name" placeholder="e.g. Cotton 40s"></div>
+      <div class="field"><label>Category</label><input id="fm-cat" placeholder="e.g. Woven, Knit, Denim…"></div>
+      <div class="field">
+        <label>Unit *</label>
+        <select id="fm-unit">
+          <option value="KG">KG</option>
+          <option value="Meters">Meters</option>
+          <option value="Yards">Yards</option>
+          <option value="Pcs">Pcs</option>
+        </select>
+      </div>
+      <div class="field"><label>Minimum Stock (Alert Level) *</label><input type="number" id="fm-min" placeholder="e.g. 50" min="0" step="0.01"></div>
+    </div>
+    <input type="hidden" id="fm-id">
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeFabricModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveFabric()">Save Fabric</button>
+    </div>
+  </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     APP
-══════════════════════════════════════ -->
-<div id="appContent">
-    <div class="topbar">
-        <div class="topbar-brand">
-            <div class="topbar-icon">🏭</div>
-            <div>
-                <div class="topbar-title">DAG FACTORY PLANNER</div>
-            </div>
-        </div>
-        <div class="topbar-right">
-            <span class="topbar-user" id="topbarUser"></span>
-            <button class="btn-logout" onclick="logout()">Logout</button>
-        </div>
+<!-- ─── ROLL EDIT MODAL ─── -->
+<div id="roll-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Edit Roll Entry</div>
+    <div class="modal-sub">Modify roll details. Quantity changes will update stock accordingly.</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field"><label>Fabric</label><select id="rm-fabric-sel"></select></div>
+      <div class="field"><label>Shade</label><select id="rm-shade"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>None</option></select></div>
+      <div class="field"><label>Roll Number</label><input id="rm-roll"></div>
+      <div class="field"><label>Quantity</label><input type="number" id="rm-qty" min="0" step="0.01"></div>
+      <div class="field"><label>Supplier</label><input id="rm-supplier"></div>
+      <div class="field"><label>Date</label><input type="date" id="rm-date"></div>
     </div>
-
-    <div class="nav-tabs">
-        <button class="nav-tab active" onclick="switchTab('dashboard', this)">Dashboard</button>
-        <button class="nav-tab" onclick="switchTab('lines', this)">Manage Lines</button>
-        <button class="nav-tab" onclick="switchTab('styles', this)">Purchase Orders</button>
-        <button class="nav-tab" onclick="switchTab('assign', this)">Assign PO</button>
+    <input type="hidden" id="rm-id">
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeRollModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveRollEdit()">Save Changes</button>
     </div>
-
-    <div class="main-content">
-
-        <!-- ─── DASHBOARD ─── -->
-        <div id="dashboard" class="tab-pane active">
-            <div class="page-header">
-                <div>
-                    <div class="page-title">Overview</div>
-                    <div class="page-heading">Production Dashboard</div>
-                </div>
-                <div class="export-row" style="margin-bottom:0">
-                    <button class="btn-export" onclick="exportPDF()">⬇ Export PDF</button>
-                    <button class="btn-export" onclick="exportExcel()">⬇ Export Excel</button>
-                </div>
-            </div>
-
-            <div class="stats-row" id="statsRow"></div>
-
-            <div class="chart-section">
-                <div class="chart-title">Production Progress by Line</div>
-                <canvas id="progressChart" height="90"></canvas>
-            </div>
-
-            <div class="search-wrap" style="margin-bottom:18px;">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" id="searchDash" placeholder="Search by line name or PO..." oninput="filterDashboard(this.value)">
-                <div class="search-count" id="searchDashCount"></div>
-            </div>
-            <div class="page-title" style="margin-bottom:16px; letter-spacing:2px; font-family:var(--mono); font-size:9px; text-transform:uppercase; color:var(--text3);">Active Lines</div>
-            <div class="lines-grid" id="dashboardLines"></div>
-        </div>
-
-        <!-- ─── MANAGE LINES ─── -->
-        <div id="lines" class="tab-pane">
-            <div class="page-header">
-                <div>
-                    <div class="page-title">Configuration</div>
-                    <div class="page-heading">Production Lines</div>
-                </div>
-            </div>
-
-            <div class="form-card">
-                <div class="form-card-title">Add New Line</div>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label>Line Name</label>
-                        <input type="text" id="lineName" placeholder="e.g. Line 10">
-                    </div>
-                    <div class="form-field">
-                        <label>Daily Capacity (pcs/day)</label>
-                        <input type="number" id="lineCapacity" placeholder="e.g. 500">
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-submit" onclick="addLine()">Add Line</button>
-                </div>
-            </div>
-
-            <div class="form-card">
-                <div class="form-card-title">Existing Lines</div>
-                <div class="search-wrap">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" class="search-input" id="searchLines" placeholder="Search lines..." oninput="filterLines(this.value)">
-                    <div class="search-count" id="searchLinesCount"></div>
-                </div>
-                <div id="linesList">
-                    <div class="empty-state"><div class="empty-state-icon">⚙️</div><div class="empty-state-text">No lines added yet</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ─── PURCHASE ORDERS ─── -->
-        <div id="styles" class="tab-pane">
-            <div class="page-header">
-                <div>
-                    <div class="page-title">Inventory</div>
-                    <div class="page-heading">Purchase Orders</div>
-                </div>
-            </div>
-
-            <div class="form-card">
-                <div class="form-card-title">Add New Purchase Order</div>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label>PO Number</label>
-                        <input type="text" id="styleNumber" placeholder="e.g. PO-2024-001">
-                    </div>
-                    <div class="form-field">
-                        <label>Style Description</label>
-                        <input type="text" id="styleName" placeholder="e.g. Men's T-Shirt Blue">
-                    </div>
-                    <div class="form-field">
-                        <label>Total Quantity (pcs)</label>
-                        <input type="number" id="styleQuantity" placeholder="e.g. 5000">
-                    </div>
-                    <div class="form-field">
-                        <label>Delivery Deadline</label>
-                        <input type="date" id="styleDeadline">
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-submit" onclick="addStyle()">Add PO</button>
-                </div>
-            </div>
-
-            <div class="form-card">
-                <div class="form-card-title">All Purchase Orders</div>
-                <div class="search-wrap">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" class="search-input" id="searchStyles" placeholder="Search by PO number or description..." oninput="filterStyles(this.value)">
-                    <div class="search-count" id="searchStylesCount"></div>
-                </div>
-                <div id="stylesList">
-                    <div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No POs added yet</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ─── ASSIGN ─── -->
-        <div id="assign" class="tab-pane">
-            <div class="page-header">
-                <div>
-                    <div class="page-title">Scheduling</div>
-                    <div class="page-heading">Assign PO to Line</div>
-                </div>
-            </div>
-
-            <div class="form-card">
-                <div class="form-card-title">New Assignment</div>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label>Production Line</label>
-                        <select id="assignLine">
-                            <option value="">Select a line...</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label>Purchase Order</label>
-                        <select id="assignStyle">
-                            <option value="">Select a PO...</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label>Start Date (auto-fills from line availability)</label>
-                        <input type="date" id="assignStartDate">
-                    </div>
-                    <div class="form-field" id="calcPreview" style="display:none; justify-content:flex-end; align-items:flex-start; padding-top:20px;">
-                        <div style="background:var(--surface2); border:1px solid var(--border); padding:14px 16px; width:100%;">
-                            <div class="kv-key" style="margin-bottom:6px;">Estimated Days</div>
-                            <div class="stat-value" id="previewDays" style="font-size:22px; color:var(--accent);">—</div>
-                            <div class="stat-sub">working days (Mon–Sat)</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-submit" onclick="assignStyleToLine()">Assign PO</button>
-                </div>
-            </div>
-
-            <div class="form-card">
-                <div class="form-card-title">Assignment History</div>
-                <div class="search-wrap">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" class="search-input" id="searchAssign" placeholder="Search by line or PO..." oninput="filterAssignments(this.value)">
-                    <div class="search-count" id="searchAssignCount"></div>
-                </div>
-                <div id="assignmentsList">
-                    <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No assignments yet</div></div>
-                </div>
-            </div>
-        </div>
-
-    </div><!-- /main-content -->
-</div><!-- /appContent -->
-
-<!-- ══════════════════════════════════════
-     EDIT MODAL
-══════════════════════════════════════ -->
-<div class="modal-overlay" id="editModal">
-    <div class="modal-box">
-        <div class="modal-title" id="editModalTitle">Edit</div>
-        <div id="editModalBody"></div>
-        <div class="modal-actions">
-            <button class="btn-sm btn-delete" style="padding:8px 18px" onclick="closeModal()">Cancel</button>
-            <button class="btn-submit" id="editModalSave" onclick="saveEdit()">Save Changes</button>
-        </div>
-    </div>
+  </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     TOAST
-══════════════════════════════════════ -->
-<div class="toast" id="toast"></div>
+<!-- ─── TOAST CONTAINER ─── -->
+<div class="toast-container" id="toasts"></div>
 
-<!-- ══════════════════════════════════════
-     SCRIPTS
-══════════════════════════════════════ -->
 <script>
-// ============================================
-// FIREBASE CONFIG
-// ============================================
-const firebaseConfig = {
-    apiKey: "AIzaSyCPigkTIkKzmUtg9G0LoqcLOs15mEAopjI",
-    authDomain: "dag-planner-new.firebaseapp.com",
-    databaseURL: "https://dag-planner-new-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "dag-planner-new",
-    storageBucket: "dag-planner-new.firebasestorage.app",
-    messagingSenderId: "592572288168",
-    appId: "1:592572288168:web:9583b690abf749ec68c69d",
-    measurementId: "G-X8VGNXSNCX"
+// ═══════════════════════════════════════════════
+//  DATABASE
+// ═══════════════════════════════════════════════
+let db = JSON.parse(localStorage.getItem('ff_v2')) || {
+  fabrics: [],   // { id, name, category, unit, minStock, createdAt }
+  stock: [],     // { id, fabricId, shade, roll, qty, supplier, date }
+  logs: []       // { id, type, fabricId, fabricName, shade, roll, qty, ref, date }
 };
 
-let app, auth, database;
-let currentUser = null;
-let productionLines = [], styles = [], assignments = [];
-let progressChart = null;
-let editingType = null, editingId = null;
+let issueCart = [];
+let reportData = [];
+let expandedFabrics = {};
 
-try {
-    app = firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    database = firebase.database();
-} catch(e) {
-    console.error(e);
+function save() {
+  localStorage.setItem('ff_v2', JSON.stringify(db));
 }
 
-// ============================================
-// WORKING DAYS CALCULATION (Mon–Sat, skip Sun)
-// ============================================
-function addWorkingDays(startDate, days) {
-    const d = new Date(startDate);
-    let added = 0;
-    while (added < days) {
-        d.setDate(d.getDate() + 1);
-        if (d.getDay() !== 0) added++; // skip Sunday
-    }
-    return d;
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+const viewTitles = { dashboard:'Dashboard', fabrics:'Fabric Items', inward:'Inhouse Entry', issue:'Issue Stock', stock:'Stock Availability', reports:'Reports' };
+
+function goView(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('topbar-title').textContent = viewTitles[id];
+  refreshView(id);
 }
 
-function countWorkingDays(startDate, endDate) {
-    const s = new Date(startDate);
-    const e = new Date(endDate);
-    let count = 0;
-    const cur = new Date(s);
-    while (cur <= e) {
-        if (cur.getDay() !== 0) count++;
-        cur.setDate(cur.getDate() + 1);
-    }
-    return count;
+function refreshView(id) {
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'fabrics') renderFabrics();
+  if (id === 'inward') { populateFabricSelects(); renderRolls(); }
+  if (id === 'issue') { renderIssueRolls(); setToday('iss-date'); }
+  if (id === 'stock') renderStock();
+  if (id === 'reports') { populateReportFabricFilter(); }
 }
 
-function workingDaysNeeded(quantity, capacity) {
-    return Math.ceil(quantity / capacity);
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function setToday(id) {
+  const el = document.getElementById(id);
+  if (el && !el.value) el.value = today();
+}
+function fmt(n) { return parseFloat(n || 0).toFixed(2); }
+
+function stockForFabric(fabricId) {
+  return db.stock.filter(s => s.fabricId === fabricId && s.qty > 0)
+    .reduce((sum, s) => sum + s.qty, 0);
 }
 
-function nextWorkingDay(date) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + 1);
-    while (d.getDay() === 0) d.setDate(d.getDate() + 1);
-    return d;
+function totalStockForFabric(fabricId) {
+  return db.stock.filter(s => s.fabricId === fabricId)
+    .reduce((sum, s) => sum + s.qty, 0);
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+function issuableForFabric(fabric) {
+  const total = stockForFabric(fabric.id);
+  const issuable = total - (fabric.minStock || 0);
+  return issuable < 0 ? 0 : parseFloat(issuable.toFixed(4));
 }
 
-function toISODate(d) {
-    return d.toISOString().split('T')[0];
+function statusForFabric(fabric) {
+  const total = stockForFabric(fabric.id);
+  const min = fabric.minStock || 0;
+  if (min === 0) return 'ok';
+  if (total <= 0) return 'critical';
+  if (total <= min) return 'low';
+  return 'ok';
 }
 
-// ============================================
-// AUTH
-// ============================================
-function login() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!email || !password) { showAuthMsg('Please enter email and password', 'error'); return; }
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function toast(type, msg, detail) {
+  const icons = {
+    success: `<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error: `<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+    warn: `<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    info: `<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+  };
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `${icons[type]}<div><div class="toast-msg">${msg}</div>${detail ? `<div class="toast-detail">${detail}</div>` : ''}</div>`;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.style.opacity = '0', 3200);
+  setTimeout(() => t.remove(), 3600);
+}
 
-    const btn = document.getElementById('loginBtn');
-    btn.textContent = 'Signing in...';
-    btn.disabled = true;
+// ═══════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard() {
+  const q = (document.getElementById('dash-search')?.value || '').toLowerCase();
+  const fabrics = db.fabrics;
+  let totalRolls = db.stock.filter(s => s.qty > 0).length;
+  let lowCount = 0, critCount = 0;
 
-    if (!auth) { showAuthMsg('Firebase not initialized. Check console.', 'error'); btn.textContent = 'Sign In'; btn.disabled = false; return; }
+  fabrics.forEach(f => {
+    const s = statusForFabric(f);
+    if (s === 'low') lowCount++;
+    if (s === 'critical') critCount++;
+  });
 
-    auth.signInWithEmailAndPassword(email, password)
-        .then(uc => {
-            currentUser = uc.user;
-            showAuthMsg('Login successful!', 'success');
-            showApp();
-        })
-        .catch(e => {
-            showAuthMsg('❌ ' + e.message, 'error');
-            btn.textContent = 'Sign In';
-            btn.disabled = false;
+  // Stats
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card gold">
+      <div class="stat-icon gold"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="stat-label">Fabric Items</div>
+      <div class="stat-value">${fabrics.length}</div>
+      <div class="stat-note">Registered types</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon green"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="m16 8 5 0M16 12h5M16 16h5M4 20h14a2 2 0 0 0 2-2v-2"/></svg></div>
+      <div class="stat-label">Active Rolls</div>
+      <div class="stat-value">${totalRolls}</div>
+      <div class="stat-note">With remaining qty</div>
+    </div>
+    <div class="stat-card ${lowCount > 0 ? 'red' : 'blue'}">
+      <div class="stat-icon ${lowCount > 0 ? 'red' : 'blue'}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="stat-label">Low Stock</div>
+      <div class="stat-value">${lowCount}</div>
+      <div class="stat-note">${critCount} critical · needs restock</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon blue"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="stat-label">Transactions</div>
+      <div class="stat-value">${db.logs.length}</div>
+      <div class="stat-note">Total movements logged</div>
+    </div>
+  `;
+
+  // Table rows
+  const filtered = fabrics.filter(f => {
+    if (!q) return true;
+    const st = statusForFabric(f);
+    return f.name.toLowerCase().includes(q) || f.unit.toLowerCase().includes(q) || st.includes(q) || (f.category||'').toLowerCase().includes(q);
+  });
+
+  // Sort: critical first, then low, then ok
+  filtered.sort((a, b) => {
+    const order = { critical: 0, low: 1, ok: 2 };
+    return order[statusForFabric(a)] - order[statusForFabric(b)];
+  });
+
+  let html = '';
+  filtered.forEach(f => {
+    const total = stockForFabric(f);
+    const issuable = issuableForFabric(f);
+    const st = statusForFabric(f);
+    const rolls = db.stock.filter(s => s.fabricId === f.id && s.qty > 0);
+    const isExpanded = expandedFabrics[f.id];
+    const pct = f.minStock > 0 ? Math.min(100, (total / (f.minStock * 2)) * 100) : 50;
+    const fillColor = st === 'critical' ? 'var(--danger)' : st === 'low' ? 'var(--warn)' : 'var(--success)';
+    const badge = st === 'critical' ? 'badge-critical' : st === 'low' ? 'badge-low' : 'badge-ok';
+    const badgeText = st === 'critical' ? '⚠ Critical' : st === 'low' ? '↓ Low Stock' : '✓ Stable';
+
+    html += `
+    <tr class="fabric-row" onclick="toggleExpand('${f.id}')">
+      <td style="width:30px;color:var(--text3);">
+        <span class="expand-icon ${isExpanded ? 'open' : ''}">▶</span>
+      </td>
+      <td><b>${f.name}</b>${f.category ? `<div style="font-size:11px;color:var(--text3);margin-top:1px;">${f.category}</div>` : ''}</td>
+      <td><span style="font-size:12px;color:var(--text3);">${f.unit}</span></td>
+      <td style="min-width:120px;">
+        <div class="qty-wrap">
+          <span class="qty-main">${fmt(total)} <span style="font-size:10px;font-weight:400;color:var(--text3);">${f.unit}</span></span>
+          <div style="display:flex;align-items:center;gap:4px;margin-top:3px;">
+            <span style="font-size:10px;color:var(--warn);" title="Min Stock locked">🔒${fmt(f.minStock)}</span>
+            <span style="font-size:10px;color:var(--text3);">+</span>
+            <span style="font-size:10px;color:var(--success);" title="Issuable">▶${fmt(issuable)}</span>
+          </div>
+          <div style="height:4px;background:var(--surface3);border-radius:10px;overflow:hidden;width:80px;margin-top:3px;">
+            <div style="height:100%;border-radius:10px;width:${pct}%;background:${fillColor};"></div>
+          </div>
+        </div>
+      </td>
+      <td style="min-width:80px;"><span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--text);">${fmt(f.minStock)} <span style="font-size:10px;font-weight:400;color:var(--text3);">${f.unit}</span></span></td>
+      <td style="min-width:90px;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${issuable > 0 ? 'var(--success)' : 'var(--danger)'};">${fmt(issuable)} <span style="font-size:10px;font-weight:400;color:var(--text3);">${f.unit}</span></td>
+      <td><span class="badge badge-inward">${rolls.length} rolls</span></td>
+      <td><span class="badge ${badge}">${badgeText}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn-ghost" title="Edit min stock" onclick="event.stopPropagation();editFabricFromDash('${f.id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+
+    if (isExpanded) {
+      if (rolls.length === 0) {
+        html += `<tr class="roll-row"><td colspan="9" style="padding-left:36px;color:var(--text3);font-size:12px;">No active rolls for this fabric.</td></tr>`;
+      } else {
+        rolls.forEach(r => {
+          html += `<tr class="roll-row">
+            <td></td>
+            <td><span style="color:var(--text3);">↳ Roll:</span> <b style="color:var(--text2);">${r.roll}</b></td>
+            <td><span style="font-size:11px;color:var(--text3);">Shade ${r.shade}</span></td>
+            <td style="min-width:100px;"><span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--text);">${fmt(r.qty)} <span style="font-size:10px;color:var(--text3);">${db.fabrics.find(f2=>f2.id===r.fabricId)?.unit||''}</span></span></td>
+            <td colspan="2"><span style="font-size:11px;color:var(--text3);">${r.supplier}</span></td>
+            <td colspan="3" style="color:var(--text3);font-size:11px;">${r.date}</td>
+          </tr>`;
         });
-}
-
-function signup() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!email || !password) { showAuthMsg('Please enter email and password', 'error'); return; }
-    if (password.length < 6) { showAuthMsg('Password must be at least 6 characters', 'error'); return; }
-
-    if (!auth) { showAuthMsg('Firebase not initialized. Check console.', 'error'); return; }
-
-    auth.createUserWithEmailAndPassword(email, password)
-        .then(uc => {
-            currentUser = uc.user;
-            showAuthMsg('Account created!', 'success');
-            showApp();
-        })
-        .catch(e => showAuthMsg('❌ ' + e.message, 'error'));
-}
-
-function logout() {
-    auth.signOut().then(() => { currentUser = null; hideApp(); });
-}
-
-function showAuthMsg(msg, type) {
-    const el = document.getElementById('authMessage');
-    el.textContent = msg;
-    el.style.color = type === 'success' ? 'var(--green)' : 'var(--red)';
-    el.style.marginTop = '12px';
-}
-
-function showApp() {
-    document.getElementById('loginContainer').style.display = 'none';
-    document.getElementById('appContent').style.display = 'block';
-    if (currentUser) document.getElementById('topbarUser').textContent = currentUser.email;
-    loadData();
-}
-
-function hideApp() {
-    document.getElementById('loginContainer').style.display = 'flex';
-    document.getElementById('appContent').style.display = 'none';
-}
-
-auth.onAuthStateChanged(user => {
-    if (user) { currentUser = user; showApp(); }
-    else hideApp();
-});
-
-// ============================================
-// DATA
-// ============================================
-function loadData() {
-    if (!currentUser) return;
-    const ref = database.ref('users/' + currentUser.uid);
-
-    ref.once('value').then(snap => {
-        const data = snap.val();
-        if (data) {
-            productionLines = data.lines || [];
-            styles = data.styles || [];
-            assignments = data.assignments || [];
-        } else {
-            initSampleData();
-        }
-        updateUI();
-    });
-
-    ref.on('value', snap => {
-        const data = snap.val();
-        if (data) {
-            productionLines = data.lines || [];
-            styles = data.styles || [];
-            assignments = data.assignments || [];
-            updateUI();
-        }
-    });
-}
-
-function saveData() {
-    if (!currentUser) return;
-    database.ref('users/' + currentUser.uid).set({
-        lines: productionLines,
-        styles: styles,
-        assignments: assignments
-    }).catch(e => showToast('Save error: ' + e.message, 'error'));
-}
-
-function initSampleData() {
-    for (let i = 1; i <= 9; i++) {
-        productionLines.push({ id: `line-${i}`, name: `Line ${i}`, capacity: 500 + i * 50 });
+      }
     }
-    saveData();
+  });
+
+  document.getElementById('dash-body').innerHTML = html || `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text3);">No fabric items found.</td></tr>`;
 }
 
-// ============================================
-// TAB NAVIGATION
-// ============================================
-function switchTab(name, btn) {
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(name).classList.add('active');
-    if (btn) btn.classList.add('active');
-    updateUI();
+function toggleExpand(fabricId) {
+  expandedFabrics[fabricId] = !expandedFabrics[fabricId];
+  renderDashboard();
 }
 
-// ============================================
-// ADD LINE
-// ============================================
-function addLine() {
-    const name = document.getElementById('lineName').value.trim();
-    const cap = parseInt(document.getElementById('lineCapacity').value);
-    if (!name || !cap) { showToast('Fill in all fields', 'error'); return; }
+// ═══════════════════════════════════════════════
+//  FABRIC ITEMS
+// ═══════════════════════════════════════════════
+function renderFabrics() {
+  const q = (document.getElementById('fab-search')?.value || '').toLowerCase();
+  const filtered = db.fabrics.filter(f => f.name.toLowerCase().includes(q) || (f.category||'').toLowerCase().includes(q));
 
-    productionLines.push({ id: `line-${Date.now()}`, name, capacity: cap });
-    document.getElementById('lineName').value = '';
-    document.getElementById('lineCapacity').value = '';
-    saveData();
-    showToast('Line added successfully', 'success');
-    updateUI();
+  document.getElementById('fab-body').innerHTML = filtered.map((f, i) => `
+    <tr>
+      <td style="color:var(--text3);font-size:12px;">${String(i+1).padStart(2,'0')}</td>
+      <td><b>${f.name}</b></td>
+      <td><span style="font-size:12px;color:var(--text3);">${f.category || '—'}</span></td>
+      <td>${f.unit}</td>
+      <td style="font-family:'DM Mono',monospace;">${fmt(f.minStock)}</td>
+      <td style="font-size:12px;color:var(--text3);">${f.createdAt || '—'}</td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn-ghost" onclick="editFabric('${f.id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-ghost" style="color:var(--danger);" onclick="deleteFabric('${f.id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3);">No fabric items. Click "New Fabric" to add one.</td></tr>`;
 }
 
-// ============================================
-// ADD STYLE / PO
-// ============================================
-function addStyle() {
-    const number = document.getElementById('styleNumber').value.trim();
-    const name = document.getElementById('styleName').value.trim();
-    const qty = parseInt(document.getElementById('styleQuantity').value);
-    const deadline = document.getElementById('styleDeadline').value;
-    if (!number || !name || !qty || !deadline) { showToast('Fill in all fields', 'error'); return; }
-
-    styles.push({ id: `style-${Date.now()}`, number, name, quantity: qty, deadline });
-    document.getElementById('styleNumber').value = '';
-    document.getElementById('styleName').value = '';
-    document.getElementById('styleQuantity').value = '';
-    document.getElementById('styleDeadline').value = '';
-    saveData();
-    showToast('PO added successfully', 'success');
-    updateUI();
+function openFabricModal(fabricId) {
+  document.getElementById('fm-id').value = fabricId || '';
+  if (fabricId) {
+    const f = db.fabrics.find(x => x.id === fabricId);
+    document.getElementById('fab-modal-title').textContent = 'Edit Fabric Item';
+    document.getElementById('fm-name').value = f.name;
+    document.getElementById('fm-cat').value = f.category || '';
+    document.getElementById('fm-unit').value = f.unit;
+    document.getElementById('fm-min').value = f.minStock;
+  } else {
+    document.getElementById('fab-modal-title').textContent = 'New Fabric Item';
+    document.getElementById('fm-name').value = '';
+    document.getElementById('fm-cat').value = '';
+    document.getElementById('fm-unit').value = 'KG';
+    document.getElementById('fm-min').value = '';
+  }
+  document.getElementById('fab-modal').classList.add('open');
 }
 
-// ============================================
-// ASSIGN PO → LINE
-// ============================================
-function assignStyleToLine() {
-    const lineId = document.getElementById('assignLine').value;
-    const styleId = document.getElementById('assignStyle').value;
-    const startDate = document.getElementById('assignStartDate').value;
-    if (!lineId || !styleId || !startDate) { showToast('Fill in all fields', 'error'); return; }
+function closeFabricModal() { document.getElementById('fab-modal').classList.remove('open'); }
 
-    const line = productionLines.find(l => l.id === lineId);
-    const style = styles.find(s => s.id === styleId);
-    const days = workingDaysNeeded(style.quantity, line.capacity);
-    const endDateObj = addWorkingDays(startDate, days);
-    const endDate = toISODate(endDateObj);
+function saveFabric() {
+  const name = document.getElementById('fm-name').value.trim().toUpperCase();
+  const cat = document.getElementById('fm-cat').value.trim();
+  const unit = document.getElementById('fm-unit').value;
+  const min = parseFloat(document.getElementById('fm-min').value);
+  const id = document.getElementById('fm-id').value;
 
-    assignments.push({
-        id: `assign-${Date.now()}`,
-        lineId, styleId, startDate, endDate,
-        daysNeeded: days
-    });
+  if (!name) return toast('error', 'Fabric name is required');
+  if (isNaN(min) || min < 0) return toast('error', 'Enter a valid minimum stock value');
 
-    document.getElementById('assignStartDate').value = '';
-    document.getElementById('calcPreview').style.display = 'none';
-    saveData();
-    showToast(`Assigned! ${days} working days → completes ${formatDate(endDate)}`, 'success');
-    switchTab('dashboard', document.querySelector('.nav-tab'));
-    updateUI();
+  if (id) {
+    const f = db.fabrics.find(x => x.id === id);
+    f.name = name; f.category = cat; f.unit = unit; f.minStock = min;
+    toast('success', 'Fabric updated', name);
+  } else {
+    if (db.fabrics.find(f => f.name === name)) return toast('error', 'Fabric already exists', name);
+    db.fabrics.push({ id: uid(), name, category: cat, unit, minStock: min, createdAt: today() });
+    toast('success', 'Fabric item added', name);
+  }
+  save(); closeFabricModal(); renderFabrics(); populateFabricSelects();
 }
 
-// ============================================
-// NEXT FEEDING DATE (2 working days before end)
-// ============================================
-function getNextFeedingDate(lineId) {
-    const lineAssignments = assignments
-        .filter(a => a.lineId === lineId)
-        .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+function editFabric(id) { openFabricModal(id); }
+function editFabricFromDash(id) { openFabricModal(id); }
 
-    if (lineAssignments.length === 0) return toISODate(new Date());
+function deleteFabric(id) {
+  const f = db.fabrics.find(x => x.id === id);
+  const hasStock = db.stock.some(s => s.fabricId === id && s.qty > 0);
+  if (hasStock) return toast('error', 'Cannot delete fabric with active stock', 'Issue all stock first or remove rolls manually.');
+  if (!confirm(`Delete fabric "${f.name}"? All its roll history will also be removed.`)) return;
+  db.fabrics = db.fabrics.filter(x => x.id !== id);
+  db.stock = db.stock.filter(s => s.fabricId !== id);
+  save(); renderFabrics();
+  toast('warn', 'Fabric deleted', f.name);
+}
 
-    // Go back 2 working days from the last end date
-    const lastEnd = new Date(lineAssignments[0].endDate);
-    let countdown = 2;
-    const d = new Date(lastEnd);
-    while (countdown > 0) {
-        d.setDate(d.getDate() - 1);
-        if (d.getDay() !== 0) countdown--;
+// ═══════════════════════════════════════════════
+//  POPULATE SELECTS
+// ═══════════════════════════════════════════════
+function populateFabricSelects() {
+  const opts = db.fabrics.map(f => `<option value="${f.id}">${f.name} (${f.unit})</option>`).join('');
+  const emptyOpt = '<option value="">— Select Fabric —</option>';
+  const el = document.getElementById('in-fabric-sel');
+  if (el) el.innerHTML = emptyOpt + opts;
+  const rmEl = document.getElementById('rm-fabric-sel');
+  if (rmEl) rmEl.innerHTML = opts;
+  setToday('in-date');
+}
+
+// ═══════════════════════════════════════════════
+//  INWARD
+// ═══════════════════════════════════════════════
+function saveInward() {
+  const supplier = document.getElementById('in-supplier').value.trim();
+  const fabricId = document.getElementById('in-fabric-sel').value;
+  const shade = document.getElementById('in-shade').value;
+  const roll = document.getElementById('in-roll').value.trim();
+  const qty = parseFloat(document.getElementById('in-qty').value);
+  const date = document.getElementById('in-date').value || today();
+
+  if (!supplier) return toast('error', 'Supplier name is required');
+  if (!fabricId) return toast('error', 'Select a fabric item');
+  if (!roll) return toast('error', 'Roll number is required');
+  if (isNaN(qty) || qty <= 0) return toast('error', 'Enter a valid quantity');
+
+  const fabric = db.fabrics.find(f => f.id === fabricId);
+  const entry = { id: uid(), fabricId, shade, roll, qty, supplier, date };
+  db.stock.push(entry);
+  db.logs.push({ id: uid(), type: 'INWARD', fabricId, fabricName: fabric.name, shade, roll, qty, ref: supplier, date, unit: fabric.unit });
+  save(); clearInward(); renderRolls();
+  toast('success', 'Roll entry saved', `${fabric.name} · Roll ${roll} · ${qty} ${fabric.unit}`);
+}
+
+function clearInward() {
+  document.getElementById('in-supplier').value = '';
+  document.getElementById('in-fabric-sel').value = '';
+  document.getElementById('in-roll').value = '';
+  document.getElementById('in-qty').value = '';
+}
+
+function renderRolls() {
+  const q = (document.getElementById('roll-search')?.value || '').toLowerCase();
+  const rolls = db.stock.filter(s => {
+    if (!q) return true;
+    const fab = db.fabrics.find(f => f.id === s.fabricId);
+    return (fab?.name||'').toLowerCase().includes(q) || s.roll.toLowerCase().includes(q) || s.supplier.toLowerCase().includes(q);
+  });
+
+  document.getElementById('roll-body').innerHTML = rolls.slice().reverse().map(s => {
+    const fab = db.fabrics.find(f => f.id === s.fabricId);
+    return `<tr>
+      <td style="font-size:12px;color:var(--text3);">${s.date}</td>
+      <td>${s.supplier}</td>
+      <td><b>${fab?.name || 'Unknown'}</b></td>
+      <td><span class="badge badge-inward">${s.shade}</span></td>
+      <td class="mono">${s.roll}</td>
+      <td class="mono">${fmt(s.qty)}</td>
+      <td style="font-size:12px;color:var(--text3);">${fab?.unit || ''}</td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn-ghost" onclick="openRollEdit('${s.id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-ghost" style="color:var(--danger);" onclick="deleteRoll('${s.id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3);">No rolls found.</td></tr>`;
+}
+
+function openRollEdit(rollId) {
+  const s = db.stock.find(x => x.id === rollId);
+  const opts = db.fabrics.map(f => `<option value="${f.id}" ${f.id === s.fabricId ? 'selected' : ''}>${f.name}</option>`).join('');
+  document.getElementById('rm-fabric-sel').innerHTML = opts;
+  document.getElementById('rm-shade').value = s.shade;
+  document.getElementById('rm-roll').value = s.roll;
+  document.getElementById('rm-qty').value = s.qty;
+  document.getElementById('rm-supplier').value = s.supplier;
+  document.getElementById('rm-date').value = s.date;
+  document.getElementById('rm-id').value = s.id;
+  document.getElementById('roll-modal').classList.add('open');
+}
+
+function closeRollModal() { document.getElementById('roll-modal').classList.remove('open'); }
+
+function saveRollEdit() {
+  const id = document.getElementById('rm-id').value;
+  const s = db.stock.find(x => x.id === id);
+  s.fabricId = document.getElementById('rm-fabric-sel').value;
+  s.shade = document.getElementById('rm-shade').value;
+  s.roll = document.getElementById('rm-roll').value.trim();
+  s.qty = parseFloat(document.getElementById('rm-qty').value);
+  s.supplier = document.getElementById('rm-supplier').value.trim();
+  s.date = document.getElementById('rm-date').value;
+  save(); closeRollModal(); renderRolls();
+  toast('success', 'Roll updated');
+}
+
+function deleteRoll(rollId) {
+  const s = db.stock.find(x => x.id === rollId);
+  if (!confirm(`Delete Roll "${s.roll}"? This cannot be undone.`)) return;
+  db.stock = db.stock.filter(x => x.id !== rollId);
+  save(); renderRolls();
+  toast('warn', 'Roll deleted', `Roll ${s.roll}`);
+}
+
+// ═══════════════════════════════════════════════
+//  ISSUE
+// ═══════════════════════════════════════════════
+function renderIssueRolls() {
+  const q = (document.getElementById('iss-search')?.value || '').toLowerCase();
+  const availableRolls = db.stock.filter(s => {
+    if (s.qty <= 0) return false;
+    const fab = db.fabrics.find(f => f.id === s.fabricId);
+    if (!fab) return false;
+    if (!q) return true;
+    return fab.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q);
+  });
+
+  document.getElementById('avail-body').innerHTML = availableRolls.map(s => {
+    const fab = db.fabrics.find(f => f.id === s.fabricId);
+    const issuable = issuableForFabric(fab);
+    // Per-roll issuable: the roll's qty, but capped by fabric-level issuable
+    const rollIssuable = Math.min(s.qty, issuable);
+    const canIssue = rollIssuable > 0;
+
+    return `<tr>
+      <td><b>${fab.name}</b><div style="font-size:11px;color:var(--text3);">${fab.category||''}</div></td>
+      <td><span class="badge badge-inward">${s.shade}</span></td>
+      <td class="mono">${s.roll}</td>
+      <td>
+        <div style="font-size:13px;font-weight:600;color:${canIssue ? 'var(--success)':'var(--danger)'};">${fmt(rollIssuable)} <span style="font-size:10px;font-weight:400;color:var(--text3);">${fab.unit}</span></div>
+        <div style="font-size:10px;color:var(--text3);">Total: ${fmt(s.qty)} · Min lock: ${fmt(fab.minStock)}</div>
+      </td>
+      <td>
+        <input type="number" id="iqty-${s.id}" placeholder="0.00" min="0.01" step="0.01" max="${rollIssuable}" style="width:90px;padding:7px 10px;font-size:13px;" ${!canIssue ? 'disabled' : ''}>
+      </td>
+      <td>
+        <button class="btn btn-success btn-sm" onclick="addToCart('${s.id}')" ${!canIssue ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>
+          + Add
+        </button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);">No available rolls. Search above or add inward entries.</td></tr>`;
+}
+
+function addToCart(stockId) {
+  const s = db.stock.find(x => x.id === stockId);
+  const fab = db.fabrics.find(f => f.id === s.fabricId);
+  const qty = parseFloat(document.getElementById('iqty-' + stockId).value);
+  const issuable = issuableForFabric(fab);
+  const rollIssuable = Math.min(s.qty, issuable);
+
+  if (isNaN(qty) || qty <= 0) return toast('error', 'Enter a valid quantity');
+  if (qty > rollIssuable) {
+    toast('error', 'Insufficient issuable quantity', `Max issuable: ${fmt(rollIssuable)} ${fab.unit}. Min stock of ${fmt(fab.minStock)} must be maintained.`);
+    return;
+  }
+
+  // Check if already in cart for this roll
+  const existing = issueCart.find(c => c.stockId === stockId);
+  if (existing) {
+    const newTotal = existing.issueQty + qty;
+    if (newTotal > rollIssuable) return toast('error', 'Total would exceed issuable amount');
+    existing.issueQty = newTotal;
+  } else {
+    issueCart.push({ stockId, fabricName: fab.name, shade: s.shade, roll: s.roll, unit: fab.unit, issueQty: qty });
+  }
+  document.getElementById('iqty-' + stockId).value = '';
+  renderCart(); toast('info', 'Added to cart', `${fab.name} · Roll ${s.roll} · ${fmt(qty)} ${fab.unit}`);
+}
+
+function renderCart() {
+  const count = issueCart.length;
+  document.getElementById('cart-count').textContent = `${count} item${count !== 1 ? 's' : ''}`;
+  if (count === 0) {
+    document.getElementById('cart-body-wrap').innerHTML = `<div class="cart-empty">No items added yet.<br>Select rolls from the table.</div>`;
+    return;
+  }
+  let html = `<table><thead><tr><th>Fabric</th><th>Roll</th><th>Qty</th><th></th></tr></thead><tbody>`;
+  issueCart.forEach((c, i) => {
+    html += `<tr>
+      <td><b style="font-size:12px;">${c.fabricName}</b><div style="font-size:10px;color:var(--text3);">Shade ${c.shade}</div></td>
+      <td class="mono" style="font-size:11px;">${c.roll}</td>
+      <td class="mono" style="font-size:12px;">${fmt(c.issueQty)}<div style="font-size:10px;color:var(--text3);">${c.unit}</div></td>
+      <td><button class="btn-ghost" style="color:var(--danger);" onclick="removeFromCart(${i})"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('cart-body-wrap').innerHTML = html;
+}
+
+function removeFromCart(i) {
+  issueCart.splice(i, 1);
+  renderCart();
+}
+
+function finalizeIssue(printPDF) {
+  const ref = document.getElementById('iss-to').value.trim();
+  const date = document.getElementById('iss-date').value || today();
+  if (!ref) return toast('error', 'Enter who this is issued to');
+  if (issueCart.length === 0) return toast('error', 'Cart is empty', 'Add rolls to the cart first.');
+
+  // Final validation before commit
+  for (const c of issueCart) {
+    const s = db.stock.find(x => x.id === c.stockId);
+    const fab = db.fabrics.find(f => f.id === s.fabricId);
+    const issuable = issuableForFabric(fab);
+    const rollIssuable = Math.min(s.qty, issuable);
+    if (c.issueQty > rollIssuable) {
+      toast('error', `Cannot issue Roll ${c.roll}`, `Only ${fmt(rollIssuable)} ${fab.unit} issuable. Min stock policy blocks further issue.`);
+      return;
     }
+  }
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    return d < today ? toISODate(today) : toISODate(d);
+  // Snapshot cart BEFORE any mutation
+  const cartSnapshot = issueCart.map(c => ({ ...c }));
+
+  // Commit stock deductions and log
+  cartSnapshot.forEach(c => {
+    const s = db.stock.find(x => x.id === c.stockId);
+    const fab = db.fabrics.find(f => f.id === s.fabricId);
+    s.qty -= c.issueQty;
+    db.logs.push({ id: uid(), type: 'ISSUE', fabricId: s.fabricId, fabricName: fab.name, shade: c.shade, roll: c.roll, qty: c.issueQty, unit: fab.unit, ref, date });
+  });
+
+  save();
+  issueCart = [];
+  document.getElementById('iss-to').value = '';
+  renderCart(); renderIssueRolls();
+
+  // Generate PDF after snapshot, after UI reset
+  if (printPDF) generateIssuePDF(ref, date, cartSnapshot);
+
+  toast('success', 'Issue completed', `Issued to ${ref}`);
 }
 
-// ============================================
-// PRODUCTION PROGRESS
-// ============================================
-function getProductionProgress(assignment) {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const start = new Date(assignment.startDate);
-    const end = new Date(assignment.endDate);
+function generateIssuePDF(ref, date, cart) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
 
-    if (today < start) return 0;
-    if (today >= end) return 100;
+  // Header block
+  doc.setFillColor(13, 17, 23);
+  doc.rect(0, 0, pageW, 40, 'F');
+  doc.setTextColor(212, 168, 83);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('FABRICFLOW PRO', 14, 16);
+  doc.setFontSize(9);
+  doc.setTextColor(139, 149, 168);
+  doc.text('FABRIC INVENTORY MANAGEMENT SYSTEM', 14, 23);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.text('ISSUE VOUCHER', pageW - 14, 16, { align: 'right' });
+  doc.setFontSize(9);
+  doc.setTextColor(139, 149, 168);
+  doc.text(`Date: ${date}`, pageW - 14, 23, { align: 'right' });
 
-    const totalDays = countWorkingDays(assignment.startDate, assignment.endDate);
-    const doneDays = countWorkingDays(assignment.startDate, toISODate(today));
-    return Math.min(100, Math.round((doneDays / totalDays) * 100));
+  // Info row
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, 40, pageW, 22, 'F');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('ISSUED TO', 14, 49);
+  doc.text('ISSUE DATE', 80, 49);
+  doc.text('TOTAL ITEMS', 140, 49);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(11);
+  doc.text(ref.toUpperCase(), 14, 57);
+  doc.setFontSize(10);
+  doc.text(date, 80, 57);
+  doc.text(String(cart.length), 140, 57);
+
+  // Table
+  const rows = cart.map((c, i) => [i + 1, c.fabricName, c.shade, c.roll, fmt(c.issueQty), c.unit]);
+  doc.autoTable({
+    head: [['#', 'Fabric Item', 'Shade', 'Roll No.', 'Quantity', 'Unit']],
+    body: rows,
+    startY: 68,
+    styles: { fontSize: 10, cellPadding: 5, fontStyle: 'normal', textColor: [30, 41, 59] },
+    headStyles: { fillColor: [13, 17, 23], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 9, halign: 'left' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: { 0: { cellWidth: 12 }, 4: { halign: 'right' }, 5: { halign: 'center', cellWidth: 18 } },
+    margin: { left: 14, right: 14 }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 12;
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.line(14, finalY, pageW - 14, finalY);
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Generated by FabricFlow Pro v2.0 · This document is system-generated.', 14, finalY + 6);
+  doc.text(`Page 1 of 1`, pageW - 14, finalY + 6, { align: 'right' });
+
+  doc.save(`IssueVoucher_${ref.replace(/\s+/g,'_')}_${date}.pdf`);
 }
 
-// ============================================
-// CURRENT / UPCOMING / OVERDUE ASSIGNMENT
-// ============================================
-function getLineCurrentAssignment(lineId) {
-    const today = new Date(); today.setHours(0,0,0,0);
-    return assignments.find(a => {
-        if (a.lineId !== lineId) return false;
-        const s = new Date(a.startDate); s.setHours(0,0,0,0);
-        const e = new Date(a.endDate); e.setHours(0,0,0,0);
-        return today >= s && today <= e;
-    }) || null;
-}
+// ═══════════════════════════════════════════════
+//  STOCK AVAILABILITY
+// ═══════════════════════════════════════════════
+function renderStock() {
+  // Populate unit filter once
+  const unitSel = document.getElementById('stk-unit');
+  const units = [...new Set(db.fabrics.map(f => f.unit))];
+  if (unitSel.options.length <= 1) {
+    units.forEach(u => { const o = document.createElement('option'); o.value = u; o.text = u; unitSel.appendChild(o); });
+  }
 
-function getLineLastAssignment(lineId) {
-    const la = assignments.filter(a => a.lineId === lineId).sort((a,b)=>new Date(b.endDate)-new Date(a.endDate));
-    return la[0] || null;
-}
+  const q = (document.getElementById('stk-search')?.value || '').toLowerCase();
+  const statusFilter = document.getElementById('stk-status')?.value || 'ALL';
+  const unitFilter = document.getElementById('stk-unit')?.value || 'ALL';
 
-// ============================================
-// UPDATE ALL UI
-// ============================================
-function updateUI() {
-    updateStats();
-    updateDashboardLines();
-    updateChart();
-    updateLinesList();
-    updateStylesList();
-    updateAssignDropdowns();
-    updateAssignmentsList();
-}
+  let totalFabrics = 0, lowCount = 0, critCount = 0, okCount = 0;
+  db.fabrics.forEach(f => {
+    const s = statusForFabric(f);
+    totalFabrics++;
+    if (s === 'ok') okCount++;
+    if (s === 'low') lowCount++;
+    if (s === 'critical') critCount++;
+  });
 
-// ── STATS ──
-function updateStats() {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const activeLines = productionLines.filter(l => getLineCurrentAssignment(l.id));
-    const overdue = assignments.filter(a => {
-        const e = new Date(a.endDate); e.setHours(0,0,0,0);
-        return e < today;
-    });
+  // Stats row
+  document.getElementById('stock-stats').innerHTML = `
+    <div class="stat-card gold">
+      <div class="stat-icon gold"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="stat-label">Total Fabrics</div>
+      <div class="stat-value">${totalFabrics}</div>
+      <div class="stat-note">Registered items</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon green"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="stat-label">Stable</div>
+      <div class="stat-value">${okCount}</div>
+      <div class="stat-note">Above minimum</div>
+    </div>
+    <div class="stat-card ${lowCount > 0 ? 'red' : 'blue'}">
+      <div class="stat-icon ${lowCount > 0 ? 'red' : 'blue'}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="stat-label">Low Stock</div>
+      <div class="stat-value">${lowCount}</div>
+      <div class="stat-note">Below minimum level</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon red"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      <div class="stat-label">Critical</div>
+      <div class="stat-value">${critCount}</div>
+      <div class="stat-note">Zero or empty stock</div>
+    </div>
+  `;
 
-    document.getElementById('statsRow').innerHTML = `
-        <div class="stat-card amber">
-            <div class="stat-label">Total Lines</div>
-            <div class="stat-value">${productionLines.length}</div>
-            <div class="stat-sub">configured</div>
+  const filtered = db.fabrics.filter(f => {
+    const st = statusForFabric(f);
+    if (statusFilter !== 'ALL' && st !== statusFilter) return false;
+    if (unitFilter !== 'ALL' && f.unit !== unitFilter) return false;
+    if (q && !f.name.toLowerCase().includes(q) && !(f.category||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // Sort: critical → low → ok, then alphabetical
+  filtered.sort((a, b) => {
+    const order = { critical: 0, low: 1, ok: 2 };
+    const sd = order[statusForFabric(a)] - order[statusForFabric(b)];
+    return sd !== 0 ? sd : a.name.localeCompare(b.name);
+  });
+
+  document.getElementById('stk-count').textContent = `${filtered.length} fabric item${filtered.length !== 1 ? 's' : ''} shown`;
+
+  if (filtered.length === 0) {
+    document.getElementById('stk-body').innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);">No fabric items match your filters.</td></tr>`;
+    return;
+  }
+
+  document.getElementById('stk-body').innerHTML = filtered.map((f, i) => {
+    const total = stockForFabric(f);
+    const min = f.minStock || 0;
+    const issuable = issuableForFabric(f);
+    const rolls = db.stock.filter(s => s.fabricId === f.id && s.qty > 0);
+    const st = statusForFabric(f);
+    const badge = st === 'critical' ? 'badge-critical' : st === 'low' ? 'badge-low' : 'badge-ok';
+    const badgeText = st === 'critical' ? '⚠ Critical' : st === 'low' ? '↓ Low Stock' : '✓ Stable';
+
+    // Split bar: locked (amber) | issuable (green) out of total
+    const lockedPct = total > 0 ? Math.min(100, (min / total) * 100) : 100;
+    const issuablePct = total > 0 ? Math.min(100, (issuable / total) * 100) : 0;
+
+    return `<tr style="cursor:pointer;" onclick="showRollBreakdown('${f.id}')">
+      <td style="color:var(--text3);font-size:12px;">${String(i+1).padStart(2,'0')}</td>
+      <td><b style="font-size:13px;">${f.name}</b></td>
+      <td style="font-size:12px;color:var(--text3);">${f.category || '—'}</td>
+      <td style="font-size:12px;color:var(--text3);">${f.unit}</td>
+      <td>
+        <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--text);">${fmt(total)}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:3px;">${f.unit}</span>
+      </td>
+      <td>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--warn);">🔒 ${fmt(min)}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:3px;">${f.unit}</span>
+      </td>
+      <td>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${issuable > 0 ? 'var(--success)' : 'var(--danger)'};">${fmt(issuable)}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:3px;">${f.unit}</span>
+      </td>
+      <td><span class="badge badge-inward">${rolls.length} roll${rolls.length !== 1 ? 's' : ''}</span></td>
+      <td style="min-width:100px;">
+        <div style="height:8px;background:var(--surface3);border-radius:10px;overflow:hidden;width:100px;display:flex;">
+          <div style="height:100%;background:var(--warn);width:${lockedPct}%;border-radius:${issuablePct > 0 ? '10px 0 0 10px' : '10px'};" title="Min Stock: ${fmt(min)}"></div>
+          <div style="height:100%;background:var(--success);width:${issuablePct}%;border-radius:${lockedPct > 0 ? '0 10px 10px 0' : '10px'};" title="Issuable: ${fmt(issuable)}"></div>
         </div>
-        <div class="stat-card green">
-            <div class="stat-label">Active Lines</div>
-            <div class="stat-value">${activeLines.length}</div>
-            <div class="stat-sub">in production today</div>
-        </div>
-        <div class="stat-card blue">
-            <div class="stat-label">Total POs</div>
-            <div class="stat-value">${styles.length}</div>
-            <div class="stat-sub">purchase orders</div>
-        </div>
-        <div class="stat-card red">
-            <div class="stat-label">Overdue</div>
-            <div class="stat-value">${overdue.length}</div>
-            <div class="stat-sub">past end date</div>
-        </div>
-    `;
+        <div style="font-size:9px;color:var(--text3);margin-top:3px;">🔒${fmt(min)} + ▶${fmt(issuable)}</div>
+      </td>
+      <td><span class="badge ${badge}">${badgeText}</span></td>
+    </tr>`;
+  }).join('');
 }
 
-// ── DASHBOARD LINE CARDS ──
-function updateDashboardLines() {
-    const container = document.getElementById('dashboardLines');
-    if (!productionLines.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏭</div><div class="empty-state-text">No lines configured yet</div></div>`;
-        return;
-    }
-
-    const today = new Date(); today.setHours(0,0,0,0);
-
-    container.innerHTML = productionLines.map(line => {
-        const cur = getLineCurrentAssignment(line.id);
-        const feedDate = getNextFeedingDate(line.id);
-        let cardHTML = '';
-
-        if (cur) {
-            const style = styles.find(s => s.id === cur.styleId);
-            const pct = getProductionProgress(cur);
-            const endD = new Date(cur.endDate); endD.setHours(0,0,0,0);
-            const isLate = endD < today;
-            const fillClass = isLate ? 'red' : (pct >= 75 ? 'green' : '');
-
-            cardHTML = `
-                <div class="line-card-header">
-                    <div>
-                        <div class="line-card-name">${line.name}</div>
-                        <div class="line-card-cap">${line.capacity.toLocaleString()} pcs/day</div>
-                    </div>
-                    <span class="badge ${isLate ? 'badge-warning' : 'badge-active'}">${isLate ? 'Overdue' : 'Active'}</span>
-                </div>
-                <div class="progress-wrap">
-                    <div class="progress-head">
-                        <span class="progress-label">${style ? style.number : '—'} · ${style ? style.name : ''}</span>
-                        <span class="progress-pct">${pct}%</span>
-                    </div>
-                    <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
-                </div>
-                <div class="kv-list">
-                    <div class="kv-row">
-                        <span class="kv-key">Quantity</span>
-                        <span class="kv-val">${style ? style.quantity.toLocaleString() : '—'} pcs</span>
-                    </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Working Days</span>
-                        <span class="kv-val">${cur.daysNeeded} days</span>
-                    </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Start</span>
-                        <span class="kv-val">${formatDate(cur.startDate)}</span>
-                    </div>
-                    <div class="kv-row">
-                        <span class="kv-key">Completion</span>
-                        <span class="kv-val ${isLate ? 'red' : 'accent'}">${formatDate(cur.endDate)}</span>
-                    </div>
-                </div>
-            `;
-        } else {
-            cardHTML = `
-                <div class="line-card-header">
-                    <div>
-                        <div class="line-card-name">${line.name}</div>
-                        <div class="line-card-cap">${line.capacity.toLocaleString()} pcs/day</div>
-                    </div>
-                    <span class="badge badge-idle">Idle</span>
-                </div>
-                <div style="padding: 24px 0; text-align:center; color: var(--text3); font-family: var(--mono); font-size:12px;">
-                    No active assignment
-                </div>
-            `;
-        }
-
-        cardHTML += `
-            <div class="feed-box">
-                <span class="feed-label">📅 Next Feed Date</span>
-                <span class="feed-date">${formatDate(feedDate)}</span>
-            </div>
-        `;
-
-        return `<div class="line-card">${cardHTML}</div>`;
-    }).join('');
+function showRollBreakdown(fabricId) {
+  const fab = db.fabrics.find(f => f.id === fabricId);
+  const rolls = db.stock.filter(s => s.fabricId === fabricId && s.qty > 0);
+  document.getElementById('stk-rolls-title').textContent = `Roll Breakdown — ${fab.name}`;
+  document.getElementById('stk-rolls-body').innerHTML = rolls.length === 0
+    ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);">No active rolls.</td></tr>`
+    : rolls.map(r => `<tr>
+        <td class="mono">${r.roll}</td>
+        <td><span class="badge badge-inward">${r.shade}</span></td>
+        <td style="color:var(--text2);">${r.supplier}</td>
+        <td style="font-size:12px;color:var(--text3);">${r.date}</td>
+        <td><span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--success);">${fmt(r.qty)} <span style="font-size:10px;font-weight:400;color:var(--text3);">${fab.unit}</span></span></td>
+      </tr>`).join('');
+  const card = document.getElementById('stk-rolls-card');
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── CHART ──
-function updateChart() {
-    const canvas = document.getElementById('progressChart');
-    if (!canvas) return;
-
-    const labels = productionLines.map(l => l.name);
-    const data = productionLines.map(l => {
-        const cur = getLineCurrentAssignment(l.id);
-        return cur ? getProductionProgress(cur) : 0;
-    });
-
-    const colors = data.map(v => v >= 75 ? '#2ecc71' : v > 0 ? '#f5a623' : '#333333');
-
-    if (progressChart) progressChart.destroy();
-
-    progressChart = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Progress %',
-                data,
-                backgroundColor: colors,
-                borderRadius: 2,
-                barThickness: 28,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1a1a1a',
-                    borderColor: '#444',
-                    borderWidth: 1,
-                    titleColor: '#aaa',
-                    bodyColor: '#f0f0f0',
-                    callbacks: {
-                        label: ctx => ` ${ctx.parsed.y}% complete`
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { color: '#222', drawBorder: false },
-                    ticks: { color: '#888', font: { family: 'IBM Plex Mono', size: 11 } }
-                },
-                y: {
-                    min: 0, max: 100,
-                    grid: { color: '#222', drawBorder: false },
-                    ticks: {
-                        color: '#888',
-                        font: { family: 'IBM Plex Mono', size: 11 },
-                        callback: v => v + '%'
-                    }
-                }
-            }
-        }
-    });
+function exportStockCSV() {
+  let csv = 'Fabric,Category,Unit,Total Stock,Min Stock (Locked),Issuable (Free),Active Rolls,Status\n';
+  db.fabrics.forEach(f => {
+    const total = stockForFabric(f.id);
+    const issuable = issuableForFabric(f);
+    const rolls = db.stock.filter(s => s.fabricId === f.id && s.qty > 0).length;
+    const st = statusForFabric(f);
+    csv += `"${f.name}","${f.category||''}",${f.unit},${fmt(total)},${fmt(f.minStock)},${fmt(issuable)},${rolls},${st}\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `StockAvailability_${today()}.csv`;
+  a.click();
+  toast('success', 'Stock CSV exported');
 }
 
-// ── LINES LIST (Manage Lines tab) ──
-function updateLinesList() {
-    const container = document.getElementById('linesList');
-    if (!productionLines.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚙️</div><div class="empty-state-text">No lines added yet</div></div>`;
-        return;
-    }
+function exportStockPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const pageW = doc.internal.pageSize.getWidth();
 
-    container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Line Name</th>
-                    <th>Capacity (pcs/day)</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${productionLines.map(line => {
-                    const cur = getLineCurrentAssignment(line.id);
-                    return `
-                        <tr>
-                            <td style="color:var(--text); font-weight:600">${line.name}</td>
-                            <td>${line.capacity.toLocaleString()}</td>
-                            <td><span class="badge ${cur ? 'badge-active' : 'badge-idle'}">${cur ? 'Active' : 'Idle'}</span></td>
-                            <td>
-                                <button class="btn-sm btn-edit" onclick="editLine('${line.id}')">Edit</button>
-                                &nbsp;
-                                <button class="btn-sm btn-delete" onclick="deleteLine('${line.id}')">Delete</button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-    `;
+  // Header
+  doc.setFillColor(13, 17, 23);
+  doc.rect(0, 0, pageW, 38, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(212, 168, 83);
+  doc.text('FABRICFLOW PRO', 14, 14);
+  doc.setFontSize(8);
+  doc.setTextColor(139, 149, 168);
+  doc.text('FABRIC INVENTORY MANAGEMENT SYSTEM', 14, 21);
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text('STOCK AVAILABILITY REPORT', pageW - 14, 14, { align: 'right' });
+  doc.setFontSize(8);
+  doc.setTextColor(139, 149, 168);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageW - 14, 21, { align: 'right' });
+
+  // Stats bar
+  const total = db.fabrics.length;
+  const low = db.fabrics.filter(f => statusForFabric(f) === 'low').length;
+  const crit = db.fabrics.filter(f => statusForFabric(f) === 'critical').length;
+  const ok = total - low - crit;
+  doc.setFillColor(22, 27, 34);
+  doc.rect(0, 38, pageW, 12, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(139, 149, 168);
+  doc.text(`TOTAL FABRICS: ${total}`, 14, 46);
+  doc.text(`STABLE: ${ok}`, 70, 46);
+  doc.text(`LOW STOCK: ${low}`, 120, 46);
+  doc.text(`CRITICAL: ${crit}`, 175, 46);
+
+  const rows = db.fabrics.map((f, i) => {
+    const tot = stockForFabric(f.id);
+    const iss = issuableForFabric(f);
+    const rollCount = db.stock.filter(s => s.fabricId === f.id && s.qty > 0).length;
+    const st = statusForFabric(f);
+    return [String(i+1).padStart(2,'0'), f.name, f.category||'—', f.unit, fmt(tot), fmt(f.minStock), fmt(iss), rollCount, st.toUpperCase()];
+  });
+
+  doc.autoTable({
+    head: [['#','Fabric Item','Category','Unit','Total Stock','Min (Locked)','Issuable (Free)','Rolls','Status']],
+    body: rows,
+    startY: 54,
+    styles: { fontSize: 9, cellPadding: 4, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [13, 17, 23], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center' },
+      4: { halign: 'right', fontStyle: 'bold' },
+      5: { halign: 'right' },
+      6: { halign: 'right', fontStyle: 'bold' },
+      7: { halign: 'center', cellWidth: 14 },
+      8: { halign: 'center', cellWidth: 22 }
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 8;
+  doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.3);
+  doc.line(14, finalY, pageW - 14, finalY);
+  doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+  doc.text('FabricFlow Pro v2.0 · Stock Availability Report · Confidential', 14, finalY + 5);
+  doc.text(`${new Date().toLocaleDateString()}`, pageW - 14, finalY + 5, { align: 'right' });
+  doc.save(`StockAvailability_${today()}.pdf`);
+  toast('success', 'Stock PDF exported');
 }
 
-// ── STYLES LIST (PO tab) ──
-function updateStylesList() {
-    const container = document.getElementById('stylesList');
-    if (!styles.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No POs added yet</div></div>`;
-        return;
-    }
-
-    const today = new Date(); today.setHours(0,0,0,0);
-
-    container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>PO Number</th>
-                    <th>Description</th>
-                    <th>Quantity</th>
-                    <th>Deadline</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${styles.map(s => {
-                    const dl = new Date(s.deadline); dl.setHours(0,0,0,0);
-                    const late = dl < today;
-                    return `
-                        <tr>
-                            <td style="color:var(--accent); font-weight:600">${s.number}</td>
-                            <td style="color:var(--text)">${s.name}</td>
-                            <td>${s.quantity.toLocaleString()}</td>
-                            <td class="kv-val ${late ? 'red' : ''}">${formatDate(s.deadline)}</td>
-                            <td>
-                                <button class="btn-sm btn-edit" onclick="editStyle('${s.id}')">Edit</button>
-                                &nbsp;
-                                <button class="btn-sm btn-delete" onclick="deleteStyle('${s.id}')">Delete</button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-    `;
+// ═══════════════════════════════════════════════
+//  REPORTS
+// ═══════════════════════════════════════════════
+function populateReportFabricFilter() {
+  const el = document.getElementById('rep-fabric');
+  if (!el) return;
+  el.innerHTML = '<option value="">All Fabrics</option>' + db.fabrics.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
 }
 
-// ── ASSIGN DROPDOWNS ──
-function updateAssignDropdowns() {
-    const lineSelect = document.getElementById('assignLine');
-    const styleSelect = document.getElementById('assignStyle');
+function generateReport() {
+  const from = document.getElementById('rep-from').value;
+  const to = document.getElementById('rep-to').value;
+  const type = document.getElementById('rep-type').value;
+  const fabricId = document.getElementById('rep-fabric').value;
 
-    const prevLine = lineSelect.value;
-    const prevStyle = styleSelect.value;
+  reportData = db.logs.filter(l => {
+    if (from && l.date < from) return false;
+    if (to && l.date > to) return false;
+    if (type !== 'ALL' && l.type !== type) return false;
+    if (fabricId && l.fabricId !== fabricId) return false;
+    return true;
+  });
 
-    lineSelect.innerHTML = '<option value="">Select a line...</option>' +
-        productionLines.map(l => `<option value="${l.id}">${l.name} · ${l.capacity.toLocaleString()} pcs/day</option>`).join('');
-
-    styleSelect.innerHTML = '<option value="">Select a PO...</option>' +
-        styles.map(s => `<option value="${s.id}">${s.number} — ${s.name} (${s.quantity.toLocaleString()})</option>`).join('');
-
-    if (prevLine) lineSelect.value = prevLine;
-    if (prevStyle) styleSelect.value = prevStyle;
-
-}
-    updatePreview();
-
-
-function updatePreview() {
-    const lineId = document.getElementById('assignLine').value;
-    const styleId = document.getElementById('assignStyle').value;
-    const preview = document.getElementById('calcPreview');
-
-    if (lineId && styleId) {
-        const line = productionLines.find(l => l.id === lineId);
-        const style = styles.find(s => s.id === styleId);
-        const days = workingDaysNeeded(style.quantity, line.capacity);
-        document.getElementById('previewDays').textContent = days;
-        preview.style.display = 'flex';
-    } else {
-        preview.style.display = 'none';
-    }
+  const inCount = reportData.filter(l => l.type === 'INWARD').length;
+  const issCount = reportData.filter(l => l.type === 'ISSUE').length;
+  document.getElementById('rep-summary').textContent = `${reportData.length} records · ${inCount} inward · ${issCount} issue${from||to ? ` · ${from||'start'} → ${to||'today'}` : ''}`;
+  document.getElementById('rep-result').style.display = 'block';
+  filterReportTable();
+  if (reportData.length === 0) toast('warn', 'No records found', 'Try adjusting the date range or filters.');
 }
 
-// ── ASSIGNMENT LIST ──
-function updateAssignmentsList() {
-    const container = document.getElementById('assignmentsList');
-    if (!assignments.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No assignments yet</div></div>`;
-        return;
-    }
+function filterReportTable() {
+  const q = (document.getElementById('rep-search')?.value || '').toLowerCase();
+  const filtered = reportData.filter(l => {
+    if (!q) return true;
+    return l.fabricName.toLowerCase().includes(q) || l.roll.toLowerCase().includes(q) || l.ref.toLowerCase().includes(q) || l.type.toLowerCase().includes(q);
+  });
 
-    const sorted = [...assignments].sort((a,b) => new Date(b.startDate) - new Date(a.startDate));
-
-    container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Line</th>
-                    <th>PO</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Working Days</th>
-                    <th>Progress</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${sorted.map(a => {
-                    const line = productionLines.find(l => l.id === a.lineId);
-                    const style = styles.find(s => s.id === a.styleId);
-                    const pct = getProductionProgress(a);
-                    return `
-                        <tr>
-                            <td style="color:var(--text);font-weight:600">${line ? line.name : '?'}</td>
-                            <td style="color:var(--accent)">${style ? style.number : '?'}</td>
-                            <td>${formatDate(a.startDate)}</td>
-                            <td>${formatDate(a.endDate)}</td>
-                            <td>${a.daysNeeded}</td>
-                            <td>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <div class="progress-bar" style="width:80px; display:inline-block">
-                                        <div class="progress-fill ${pct>=75?'green':''}" style="width:${pct}%"></div>
-                                    </div>
-                                    <span style="font-family:var(--mono);font-size:11px;color:var(--text2)">${pct}%</span>
-                                </div>
-                            </td>
-                            <td>
-                                <button class="btn-sm btn-edit" onclick="editAssignment('${a.id}')">Edit</button>
-&nbsp;
-<button class="btn-sm btn-delete" onclick="deleteAssignment('${a.id}')">Remove</button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-    `;
+  document.getElementById('rep-body').innerHTML = filtered.map((l, i) => `
+    <tr>
+      <td style="color:var(--text3);font-size:12px;">${String(i+1).padStart(3,'0')}</td>
+      <td style="font-size:12px;">${l.date}</td>
+      <td><span class="badge ${l.type === 'INWARD' ? 'badge-inward' : 'badge-issue'}">${l.type}</span></td>
+      <td><b>${l.fabricName}</b></td>
+      <td><span class="badge badge-ok" style="font-size:9px;">${l.shade}</span></td>
+      <td class="mono">${l.roll}</td>
+      <td style="color:var(--text2);">${l.ref}</td>
+      <td class="mono" style="font-weight:600;${l.type==='ISSUE'?'color:var(--warn);':'color:var(--success);'}">${l.type==='ISSUE'?'−':'+'} ${fmt(l.qty)}</td>
+      <td style="font-size:12px;color:var(--text3);">${l.unit||''}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text3);">No records match your search.</td></tr>`;
 }
 
-// ============================================
-// EDIT / DELETE
-// ============================================
-function editLine(id) {
-    const line = productionLines.find(l => l.id === id);
-    if (!line) return;
-    editingType = 'line';
-    editingId = id;
-    document.getElementById('editModalTitle').textContent = 'Edit Production Line';
-    document.getElementById('editModalBody').innerHTML = `
-        <div class="form-field" style="margin-bottom:16px">
-            <label>Line Name</label>
-            <input type="text" class="field-input" id="editField1" value="${line.name}">
-        </div>
-        <div class="form-field">
-            <label>Daily Capacity (pcs/day)</label>
-            <input type="number" class="field-input" id="editField2" value="${line.capacity}">
-        </div>
-    `;
-    document.getElementById('editModal').classList.add('open');
-}
-
-function editStyle(id) {
-    const s = styles.find(x => x.id === id);
-    if (!s) return;
-    editingType = 'style';
-    editingId = id;
-    document.getElementById('editModalTitle').textContent = 'Edit Purchase Order';
-    document.getElementById('editModalBody').innerHTML = `
-        <div class="form-grid">
-            <div class="form-field">
-                <label>PO Number</label>
-                <input type="text" class="field-input" id="editField1" value="${s.number}">
-            </div>
-            <div class="form-field">
-                <label>Description</label>
-                <input type="text" class="field-input" id="editField2" value="${s.name}">
-            </div>
-            <div class="form-field">
-                <label>Quantity</label>
-                <input type="number" class="field-input" id="editField3" value="${s.quantity}">
-            </div>
-            <div class="form-field">
-                <label>Deadline</label>
-                <input type="date" class="field-input" id="editField4" value="${s.deadline}">
-            </div>
-        </div>
-    `;
-    document.getElementById('editModal').classList.add('open');
-}
-
-function saveEdit() {
-    if (editingType === 'line') {
-        const idx = productionLines.findIndex(l => l.id === editingId);
-        if (idx < 0) return;
-        productionLines[idx].name = document.getElementById('editField1').value.trim();
-        productionLines[idx].capacity = parseInt(document.getElementById('editField2').value);
-        showToast('Line updated', 'success');
-    } else if (editingType === 'style') {
-        const idx = styles.findIndex(s => s.id === editingId);
-        if (idx < 0) return;
-        styles[idx].number = document.getElementById('editField1').value.trim();
-        styles[idx].name = document.getElementById('editField2').value.trim();
-        styles[idx].quantity = parseInt(document.getElementById('editField3').value);
-        styles[idx].deadline = document.getElementById('editField4').value;
-        showToast('PO updated', 'success');
-    }
-    closeModal();
-    saveData();
-    updateUI();
-}
-
-function closeModal() {
-    document.getElementById('editModal').classList.remove('open');
-    editingType = null; editingId = null;
-}
-    function editAssignment(id) {
-    const a = assignments.find(x => x.id === id);
-    if (!a) return;
-    editingType = 'assignment';
-    editingId = id;
-    document.getElementById('editModalTitle').textContent = 'Edit Assignment';
-    document.getElementById('editModalBody').innerHTML = `
-        <div class="form-grid">
-            <div class="form-field">
-                <label>Production Line</label>
-                <select class="field-input" id="editField1">
-                    ${productionLines.map(l => `<option value="${l.id}" ${l.id === a.lineId ? 'selected' : ''}>${l.name}</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-field">
-                <label>Purchase Order</label>
-                <select class="field-input" id="editField2">
-                    ${styles.map(s => `<option value="${s.id}" ${s.id === a.styleId ? 'selected' : ''}>${s.number} — ${s.name}</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-field">
-                <label>Start Date</label>
-                <input type="date" class="field-input" id="editField3" value="${a.startDate}">
-            </div>
-        </div>
-    `;
-    document.getElementById('editModal').classList.add('open');
-}
-
-function deleteLine(id) {
-    if (!confirm('Delete this production line? This will also remove its assignments.')) return;
-    productionLines = productionLines.filter(l => l.id !== id);
-    assignments = assignments.filter(a => a.lineId !== id);
-    saveData();
-    showToast('Line deleted', 'success');
-    updateUI();
-}
-
-function deleteStyle(id) {
-    if (!confirm('Delete this PO? This will also remove its assignments.')) return;
-    styles = styles.filter(s => s.id !== id);
-    assignments = assignments.filter(a => a.styleId !== id);
-    saveData();
-    showToast('PO deleted', 'success');
-    updateUI();
-}
-
-function deleteAssignment(id) {
-    if (!confirm('Remove this assignment?')) return;
-    assignments = assignments.filter(a => a.id !== id);
-    saveData();
-    showToast('Assignment removed', 'success');
-    updateUI();
-}
-
-// ============================================
-// EXPORT
-// ============================================
-function exportExcel() {
-    const today = new Date(); today.setHours(0,0,0,0);
-
-    // Sheet 1: Lines
-    const linesData = productionLines.map(l => {
-        const cur = getLineCurrentAssignment(l.id);
-        const style = cur ? styles.find(s => s.id === cur.styleId) : null;
-        const feed = getNextFeedingDate(l.id);
-        return {
-            'Line Name': l.name,
-            'Capacity (pcs/day)': l.capacity,
-            'Status': cur ? 'Active' : 'Idle',
-            'Current PO': style ? style.number : '—',
-            'Current Style': style ? style.name : '—',
-            'Completion Date': cur ? cur.endDate : '—',
-            'Progress %': cur ? getProductionProgress(cur) + '%' : '0%',
-            'Next Feed Date': feed
-        };
-    });
-
-    // Sheet 2: POs
-    const posData = styles.map(s => ({
-        'PO Number': s.number,
-        'Description': s.name,
-        'Quantity': s.quantity,
-        'Deadline': s.deadline,
-    }));
-
-    // Sheet 3: Assignments
-    const assignData = assignments.map(a => {
-        const line = productionLines.find(l => l.id === a.lineId);
-        const style = styles.find(s => s.id === a.styleId);
-        return {
-            'Line': line ? line.name : '—',
-            'PO Number': style ? style.number : '—',
-            'PO Description': style ? style.name : '—',
-            'Start Date': a.startDate,
-            'End Date': a.endDate,
-            'Working Days': a.daysNeeded,
-            'Progress %': getProductionProgress(a) + '%'
-        };
-    });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linesData), 'Lines Overview');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(posData), 'Purchase Orders');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(assignData), 'Assignments');
-
-    XLSX.writeFile(wb, `DAG_FactoryPlan_${toISODate(new Date())}.xlsx`);
-    showToast('Excel exported successfully', 'success');
+function exportCSV() {
+  let csv = 'Date,Type,Fabric,Shade,Roll,Ref/Supplier,Qty,Unit\n';
+  reportData.forEach(l => csv += `${l.date},${l.type},"${l.fabricName}",${l.shade},"${l.roll}","${l.ref}",${l.qty},${l.unit||''}\n`);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `FabricFlow_Report_${today()}.csv`;
+  a.click();
+  toast('success', 'CSV exported');
 }
 
 function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape' });
-    const today = toISODate(new Date());
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const pageW = doc.internal.pageSize.getWidth();
 
-    // Header
-    doc.setFillColor(245, 166, 35);
-    doc.rect(0, 0, doc.internal.pageSize.width, 18, 'F');
-    doc.setTextColor(0,0,0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('DAG GARMENT FACTORY — PRODUCTION PLAN', 14, 12);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${today}`, doc.internal.pageSize.width - 14, 12, { align: 'right' });
+  // Header
+  doc.setFillColor(13, 17, 23);
+  doc.rect(0, 0, pageW, 38, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(212, 168, 83);
+  doc.text('FABRICFLOW PRO', 14, 14);
+  doc.setFontSize(8);
+  doc.setTextColor(139, 149, 168);
+  doc.text('FABRIC INVENTORY MANAGEMENT SYSTEM', 14, 20);
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text('TRANSACTION REPORT', pageW - 14, 14, { align: 'right' });
+  doc.setFontSize(8);
+  doc.setTextColor(139, 149, 168);
 
-    // Lines table
-    doc.setTextColor(0,0,0);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PRODUCTION LINES OVERVIEW', 14, 28);
+  const from = document.getElementById('rep-from').value;
+  const to = document.getElementById('rep-to').value;
+  const type = document.getElementById('rep-type').value;
+  doc.text(`Period: ${from || 'All'} to ${to || 'Present'}  ·  Type: ${type}  ·  Records: ${reportData.length}`, pageW - 14, 20, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageW - 14, 26, { align: 'right' });
 
-    const linesRows = productionLines.map(l => {
-        const cur = getLineCurrentAssignment(l.id);
-        const style = cur ? styles.find(s => s.id === cur.styleId) : null;
-        const feed = getNextFeedingDate(l.id);
-        return [
-            l.name,
-            l.capacity.toLocaleString(),
-            cur ? 'Active' : 'Idle',
-            style ? style.number : '—',
-            style ? style.name : '—',
-            cur ? cur.endDate : '—',
-            cur ? getProductionProgress(cur) + '%' : '0%',
-            feed
-        ];
-    });
+  // Stats bar
+  const inCount = reportData.filter(l => l.type === 'INWARD').length;
+  const issCount = reportData.filter(l => l.type === 'ISSUE').length;
+  doc.setFillColor(22, 27, 34);
+  doc.rect(0, 38, pageW, 14, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(139, 149, 168);
+  doc.text(`TOTAL RECORDS: ${reportData.length}`, 14, 47);
+  doc.text(`INWARD: ${inCount}`, 80, 47);
+  doc.text(`ISSUE: ${issCount}`, 140, 47);
 
-    doc.autoTable({
-        startY: 32,
-        head: [['Line','Capacity','Status','PO No.','Style','Completion','Progress','Next Feed']],
-        body: linesRows,
-        theme: 'grid',
-        headStyles: { fillColor: [30,30,30], textColor: [245,166,35], fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8, textColor: [40,40,40] },
-        alternateRowStyles: { fillColor: [245,245,245] },
-        styles: { font: 'helvetica' }
-    });
+  const rows = reportData.map((l, i) => [
+    String(i+1).padStart(3,'0'), l.date, l.type, l.fabricName, l.shade, l.roll, l.ref, fmt(l.qty), l.unit || ''
+  ]);
 
-    // Assignments on new page
-    doc.addPage();
-    doc.setFillColor(245, 166, 35);
-    doc.rect(0, 0, doc.internal.pageSize.width, 18, 'F');
-    doc.setTextColor(0,0,0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('DAG GARMENT FACTORY — ASSIGNMENTS', 14, 12);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${today}`, doc.internal.pageSize.width - 14, 12, { align: 'right' });
-
-    doc.setFontSize(10);
-    doc.text('ASSIGNMENT HISTORY', 14, 28);
-
-    const assignRows = assignments.map(a => {
-        const line = productionLines.find(l => l.id === a.lineId);
-        const style = styles.find(s => s.id === a.styleId);
-        return [
-            line ? line.name : '—',
-            style ? style.number : '—',
-            style ? style.name : '—',
-            a.startDate,
-            a.endDate,
-            a.daysNeeded,
-            getProductionProgress(a) + '%'
-        ];
-    });
-
-    doc.autoTable({
-        startY: 32,
-        head: [['Line','PO No.','Description','Start','End','Working Days','Progress']],
-        body: assignRows,
-        theme: 'grid',
-        headStyles: { fillColor: [30,30,30], textColor: [245,166,35], fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8, textColor: [40,40,40] },
-        alternateRowStyles: { fillColor: [245,245,245] },
-    });
-
-    doc.save(`DAG_FactoryPlan_${today}.pdf`);
-    showToast('PDF exported successfully', 'success');
-}
-
-// ============================================
-// TOAST
-// ============================================
-let toastTimer;
-function showToast(msg, type = 'success') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast show ${type}`;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
-}
-// ============================================
-// SEARCH / FILTER FUNCTIONS
-// ============================================
-
-function filterDashboard(query) {
-    const q = query.toLowerCase();
-    const cards = document.querySelectorAll("#dashboardLines .line-card");
-    let visible = 0;
-    cards.forEach(card => {
-        const text = card.innerText.toLowerCase();
-        const show = !q || text.includes(q);
-        card.style.display = show ? "" : "none";
-        if (show) visible++;
-    });
-    const el = document.getElementById("searchDashCount");
-    if (el) el.textContent = q ? visible + " of " + cards.length + " lines" : "";
-}
-
-function filterLines(query) {
-    const q = query.toLowerCase();
-    const rows = document.querySelectorAll("#linesList tbody tr");
-    let visible = 0;
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const show = !q || text.includes(q);
-        row.style.display = show ? "" : "none";
-        if (show) visible++;
-    });
-    const el = document.getElementById("searchLinesCount");
-    if (el) el.textContent = q ? visible + " of " + rows.length + " lines" : "";
-}
-
-function filterStyles(query) {
-    const q = query.toLowerCase();
-    const rows = document.querySelectorAll("#stylesList tbody tr");
-    let visible = 0;
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const show = !q || text.includes(q);
-        row.style.display = show ? "" : "none";
-        if (show) visible++;
-    });
-    const el = document.getElementById("searchStylesCount");
-    if (el) el.textContent = q ? visible + " of " + rows.length + " POs" : "";
-}
-
-function filterAssignments(query) {
-    const q = query.toLowerCase();
-    const rows = document.querySelectorAll("#assignmentsList tbody tr");
-    let visible = 0;
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const show = !q || text.includes(q);
-        row.style.display = show ? "" : "none";
-        if (show) visible++;
-    });
-    const el = document.getElementById("searchAssignCount");
-    if (el) el.textContent = q ? visible + " of " + rows.length + " assignments" : "";
-}
-
-
-// Click outside modal to close
-document.getElementById('editModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
-
-// One-time assign page event listeners
-document.getElementById('assignLine').addEventListener('change', function() {
-    if (this.value) {
-        const fd = getNextFeedingDate(this.value);
-        document.getElementById('assignStartDate').value = fd;
+  doc.autoTable({
+    head: [['#', 'Date', 'Type', 'Fabric Item', 'Shade', 'Roll No.', 'Ref / Supplier', 'Qty', 'Unit']],
+    body: rows,
+    startY: 55,
+    styles: { fontSize: 9, cellPadding: 4, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [13, 17, 23], textColor: [212, 168, 83], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 18, halign: 'center' },
+      7: { halign: 'right', cellWidth: 18 },
+      8: { halign: 'center', cellWidth: 16 }
+    },
+    margin: { left: 14, right: 14 },
+    didDrawCell: (data) => {
+      if (data.section === 'body' && data.column.index === 2) {
+        const type = data.row.raw[2];
+        if (type === 'INWARD') {
+          doc.setTextColor(96, 165, 250);
+        } else {
+          doc.setTextColor(212, 168, 83);
+        }
+      }
     }
-    updatePreview();
-});
-document.getElementById('assignStyle').addEventListener('change', updatePreview);
-document.getElementById('assignStartDate').addEventListener('change', updatePreview);
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 8;
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.line(14, finalY, pageW - 14, finalY);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text('FabricFlow Pro v2.0 · Confidential Inventory Report', 14, finalY + 5);
+  doc.text(`Page 1 of 1 · ${new Date().toLocaleDateString()}`, pageW - 14, finalY + 5, { align: 'right' });
+
+  doc.save(`FabricFlow_Report_${today()}.pdf`);
+  toast('success', 'PDF exported');
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+(function init() {
+  setToday('in-date');
+  setToday('iss-date');
+  setToday('rep-to');
+  // Set rep-from to 30 days ago
+  const d = new Date(); d.setDate(d.getDate() - 30);
+  const el = document.getElementById('rep-from');
+  if (el) el.value = d.toISOString().split('T')[0];
+  renderDashboard();
+  populateFabricSelects();
+})();
 </script>
 </body>
 </html>
